@@ -14,7 +14,6 @@ api_version = "2025-07"
 scopes = "read_discounts,read_orders,read_price_rules,write_customers,write_discounts,write_orders,write_price_rules,write_products"
 
 [auth]
-# OAuth redirect URLs - these point to the backend API worker where auth is handled
 redirect_urls = [
   "https://saa-voyager-app-prod.tofmail2022.workers.dev/auth/callback",
   "https://saa-voyager-app-prod.tofmail2022.workers.dev/auth/shopify/callback",
@@ -23,7 +22,3 @@ redirect_urls = [
 
 [pos]
 embedded = false
-
-[build]
-automatically_update_urls_on_dev = true
-dev_store_url = "nian-store-111.myshopify.com"

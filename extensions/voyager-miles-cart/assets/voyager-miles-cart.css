@@ -24,9 +24,17 @@ form[action*="/cart"] .voyager-miles-cart-block {
   padding: 16px 20px;
   text-align: center;
   border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.voyager-header:hover {
+  background: #152a47;
 }
 
 .voyager-header h2 {
+  color: white; 
   margin: 0;
   font-size: 18px;
   font-weight: 700;
@@ -58,7 +66,7 @@ form[action*="/cart"] .voyager-miles-cart-block {
   font-size: 12px;
   font-weight: 500;
   color: #666;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s;
   white-space: nowrap;
   min-width: 0;
@@ -78,9 +86,6 @@ form[action*="/cart"] .voyager-miles-cart-block {
   line-height: 1.2;
 }
 
-.voyager-tab:hover {
-  background: #d5d5d5;
-}
 
 .voyager-tab.active {
   background: white;
