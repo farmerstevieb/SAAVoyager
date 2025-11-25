@@ -1,0 +1,29 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "5dd47accf1ac433ca66a52699fa9a4b0"
+name = "Test-data"
+application_url = "https://saa-voyager-frontend.tofmail2022.workers.dev"
+embedded = true
+handle = "test-data-14"
+
+[webhooks]
+api_version = "2025-07"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_discounts,read_orders,read_price_rules,write_customers,write_discounts,write_orders,write_price_rules,write_products"
+
+[auth]
+# OAuth redirect URLs - these point to the backend API worker where auth is handled
+redirect_urls = [
+  "https://saa-voyager-app-prod.tofmail2022.workers.dev/auth/callback",
+  "https://saa-voyager-app-prod.tofmail2022.workers.dev/auth/shopify/callback",
+  "https://saa-voyager-app-prod.tofmail2022.workers.dev/api/auth/callback"
+]
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "nian-store-111.myshopify.com"

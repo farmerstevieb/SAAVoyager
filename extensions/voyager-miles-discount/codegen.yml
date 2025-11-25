@@ -1,0 +1,11 @@
+schema: schema.graphql
+documents: input.graphql
+generates:
+  src/types.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+    config:
+      scalars:
+        Money: string
+        DateTime: string

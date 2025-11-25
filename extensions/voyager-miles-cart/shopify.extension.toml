@@ -1,0 +1,9 @@
+name = "voyager-miles-cart"
+
+uid = "728ba807-b382-956d-43c9-f617e8bb54dca18d76cb"
+
+type = "theme"
+
+[capabilities]
+network_access = true
+api_access = true

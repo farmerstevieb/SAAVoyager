@@ -1,0 +1,63 @@
+Yes — I understand the requirement
+Goal: Let customers log in with SAA Voyager on cart/checkout, fetch their points, convert to ZAR, apply as a discount, and finalize the points deduction on the Thank You page. If points < subtotal, collect the balance by card; if points ≥ subtotal, order total becomes 0. Use the provided SOAP/WSDL services.
+High-level flow
+Authenticate: Customer enters Voyager username/password.
+Fetch points: Call Account Summary; return “You have X points”.
+Convert and apply: Convert points → ZAR; cap at cart subtotal; apply discount.
+Place order: Customer pays remaining amount (if any).
+Finalize on Thank You: Deduct points (issue/mark certificate). If payment fails/cancel, re-credit points.
+Logout: End Voyager session.
+Shopify plan implications
+Shopify Plus (best UX)
+Use a Checkout UI Extension to capture credentials on checkout.
+Use a Shopify Function to apply a fixed-amount discount automatically.
+Finalize points on the Order Status page and via order webhooks.
+
+Advanced/Basic
+Capture credentials on the cart page (Theme App Embed/App Block).
+Create a one-time discount code (price rule) server-side and auto-apply to checkout, or use cart attributes + draft order flow.
+Finalize points via orders/create webhooks.
+Required SOAP calls (server-side only)
+AuthenticateMemberServiceV2.7: log in and obtain session/token.
+AccountSummaryServiceV2.7: retrieve total available balance (points).
+IssueCertificateServiceV2.7 and/or MarkCertificateAsUsedService: finalize deduction after order success.
+RecreditPointsServiceV2.7: refund points on cancellation/failed payment/return.
+LogoutMemberServiceV2.7: close session.
+Never call these from the browser; use a backend proxy for security and CORS.
+Recommended architecture
+App backend (proxy): Node/Remix (or your preferred stack) to call SOAP (e.g., node-soap/custom XML). Store a per-cart/session Voyager token and pending “intended deduction” with idempotency keys.
+
+Front-end integration:
+Plus: Checkout UI Extension + Function (fixed amount discount).
+Non-Plus: Cart page app block to collect credentials; server generates a single-use discount code or uses draft order flow.
+Webhooks: orders/create to finalize deduction; orders/cancelled/refunds to recredit points.
+Idempotency: Ensure finalize/recredit are safe to retry (store certificate ids/attempts).
+Observability: Correlation IDs per cart/order; structured logs; retry/backoff.
+Business rules needed
+Conversion: Points → ZAR rate, rounding, max/min points usage, expiry handling.
+Edge cases: Auth failures, insufficient points, session timeout, timeout/retry behavior.
+Refunds: Exact mapping to RecreditPoints on cancellations/returns.
+Content/UX: Wording for “You have X points”, errors, and consent text.
+
+MVP implementation order
+Backend endpoints: auth, balance, apply-discount, finalize, recredit, logout.
+Cart/Checkout UI: capture credentials, display points and applied discount.
+Discount application: Function (Plus) or single-use code/draft order (Non-Plus).
+Thank You finalization + webhooks for finalize/recredit.
+QA in staging with your UAT WSDLs; add idempotency and logging.
+Answers to your specific questions
+“Do we need a middle system?” Yes. Use the app’s backend as a secure proxy for the SOAP/WSDL calls. Don’t call them from the browser or extension.
+“Shopify Plus vs Advanced?” Plus gives a cleaner checkout integration via Checkout UI Extension + Functions. Advanced can work via cart capture + one-time discount code or draft order.
+Quick sanity example
+Subtotal R4000; points worth R2500 → apply R2500 discount, charge R1500 by card.
+Subtotal R4000; points worth R6000 → apply R4000 discount, charge R0; finalize a R4000-equivalent points deduction.
+
+Next info I need to start
+Shopify plan (Plus or not).
+Points→ZAR conversion rule and rounding.
+Any usage limits (min/max, categories excluded).
+Error message copy and UI placement (cart vs checkout).
+Staging credentials and IP allowlists for the UAT WSDLs.
+Target timeline.
+If you’d like, I can scaffold the backend endpoints and the cart/checkout UI next.
+

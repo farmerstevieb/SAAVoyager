@@ -1,0 +1,258 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsu:Timestamp wsu:Id="Timestamp-1720608735" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Created>2015-03-04T09:03:24.443Z</wsu:Created>
+            <wsu:Expires>2015-03-04T09:05:04.443Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-213994659" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>iloyal-web</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">GxR14l2E5ioUtNmm4O/CIU53tzk=</wsse:Password>
+            <wsse:Nonce>3VGEIgysHuW2AArtwyx4fw==</wsse:Nonce>
+            <wsu:Created>2015-03-04T09:03:24.442Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns3:RetrieveRewardResponse xmlns:ns3="http://www.ibsplc.com/iloyal/redemption/retrievereward/type/">
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR1</rewardCode>
+            <rewardName>Miles for Style - 5000 Miles equivalent to 3600 Style Miles</rewardName>
+            <startDate>18-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style - 5000 Miles equivalent to 3600 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>ssbk665g</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR2</rewardCode>
+            <rewardName>Miles for Style -10000 Miles equivalent to 7200 Style Miles</rewardName>
+            <startDate>18-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style -10000 Miles equivalent to 7200 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>ssbk665g</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR3</rewardCode>
+            <rewardName>Miles for Style -15000 Miles equivalent to 10800 Style Miles</rewardName>
+            <startDate>18-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style -15000 Miles equivalent to 10800 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>ssbk665g</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR4</rewardCode>
+            <rewardName>Miles for Style -20000 Miles equivalent to 14400 Style Miles</rewardName>
+            <startDate>18-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style -20000 Miles equivalent to 14400 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>ssbk665g</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR5</rewardCode>
+            <rewardName>Miles for Style -25000 Miles equivalent to 18000 Style Miles</rewardName>
+            <startDate>19-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style -25000 Miles equivalent to 18000 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>ssbk665g</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR6</rewardCode>
+            <rewardName>Miles for Style -30000 Miles equivalent to 21600 Style Miles</rewardName>
+            <startDate>18-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style -30000 Miles equivalent to 21600 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>ssbk665g</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR7</rewardCode>
+            <rewardName>Miles for Style-35000 Miles equivalent to 25200 Style Miles</rewardName>
+            <startDate>18-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style-35000 Miles equivalent to 25200 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>sbm703u</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <reward>
+            <companyCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <programCode>VOYAG</programCode>
+            <partnerCode>MTS</partnerCode>
+            <rewardCode>MTSR8</rewardCode>
+            <rewardName>Miles for Style-40000 Miles equivalent to 28800 Style Miles</rewardName>
+            <startDate>18-Feb-2015</startDate>
+            <endDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <isGroupRedeemable>false</isGroupRedeemable>
+            <isExternal>false</isExternal>
+            <description>Miles for Style-40000 Miles equivalent to 28800 Style Miles</description>
+            <rewardGroup>L</rewardGroup>
+            <rewardCertificateType>Electronic</rewardCertificateType>
+            <rewardCertificateValidity>92</rewardCertificateValidity>
+            <rewardCostType>Rule-Based</rewardCostType>
+            <rewardCost>0.0</rewardCost>
+            <rewardCostCurrency xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <status>Active</status>
+            <flightDetail>
+               <isRoundTripPermitted>false</isRoundTripPermitted>
+            </flightDetail>
+            <userCode>sbm703u</userCode>
+            <billingPartner>C</billingPartner>
+            <cancellationAllowedPeriod>31</cancellationAllowedPeriod>
+            <extendExpiryPeriod>0</extendExpiryPeriod>
+            <extendExpiryFrom xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <hasNextPage>false</hasNextPage>
+            <absoluteIndex>44</absoluteIndex>
+         </reward>
+         <txnHeader>
+            <transactionID>D4A070B5D70946E5BB978D48FE734F00</transactionID>
+            <userName>mtn</userName>
+            <transactionToken/>
+            <timeStamp>2020-01-11T10:33:52.303Z</timeStamp>
+         </txnHeader>
+      </ns3:RetrieveRewardResponse>
+   </soapenv:Body>
+</soapenv:Envelope>

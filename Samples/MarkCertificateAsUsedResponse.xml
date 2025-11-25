@@ -1,0 +1,26 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsu:Timestamp wsu:Id="Timestamp-1279077935" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Created>2015-03-04T09:22:36.695Z</wsu:Created>
+            <wsu:Expires>2015-03-04T09:24:16.695Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-1260941733" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>iloyal-web</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">rF5mqs810IGgYPe0YXcn+MPaoe0=</wsse:Password>
+            <wsse:Nonce>4uaoI+USJ4FltCphT0dgDg==</wsse:Nonce>
+            <wsu:Created>2015-03-04T09:22:36.695Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns3:MarkCertificateAsUsedResponse xmlns:ns3="http://www.ibsplc.com/iloyal/redemption/markcertificateasused/type/">
+         <status>true</status>
+         <txnHeader>
+            <transactionID>DF1173B23E242EF3C3064AA860116939</transactionID>
+            <userName>mtn</userName>
+            <timeStamp>2015-02-16T07:06:18.555Z</timeStamp>
+         </txnHeader>
+      </ns3:MarkCertificateAsUsedResponse>
+   </soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,67 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsu:Timestamp wsu:Id="Timestamp-1403611138" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Created>2015-02-02T09:38:04.809Z</wsu:Created>
+            <wsu:Expires>2015-02-02T09:39:44.809Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-781927533" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>iloyal-web</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">qhKJvH6/a/tM9tjWOC6aU6+0Gro=</wsse:Password>
+            <wsse:Nonce>jsNQvG7GZ4j0MZiT7sAlGA==</wsse:Nonce>
+            <wsu:Created>2015-02-02T09:38:04.809Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns5:CreateAccrualActivityResponseData xmlns:ns5="http://www.ibsplc.com/iloyal/accrual/activity/v2.7/type/">
+         <responseString>Transaction Completed Successfully</responseString>
+         <accrualResponseDetail>
+            <activityReferenceNumber>22122553</activityReferenceNumber>
+            <responseCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <responseDescription xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <ianValue xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <oprahValue xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+            <pointTransactionDetails>
+               <pointType>BASE</pointType>
+               <points>100.0</points>
+            </pointTransactionDetails>
+            <pointTransactionDetails>
+               <pointType>BONUS</pointType>
+               <points>2500.0</points>
+            </pointTransactionDetails>
+         </accrualResponseDetail>
+         <accountBalance>
+            <membershipNumber>32757624</membershipNumber>
+            <accountDetails>
+               <pointType>FAFLAG</pointType>
+               <points>2.0</points>
+               <totalAccruedPoints>2.0</totalAccruedPoints>
+               <totalRedeemedPoints>0.0</totalRedeemedPoints>
+            </accountDetails>
+            <accountDetails>
+               <pointType>BASE</pointType>
+               <points>100.0</points>
+               <totalAccruedPoints>14679.0</totalAccruedPoints>
+               <totalRedeemedPoints>0.0</totalRedeemedPoints>
+            </accountDetails>
+            <accountDetails>
+               <pointType>BONUS</pointType>
+               <points>2500.0</points>
+               <totalAccruedPoints>2500.0</totalAccruedPoints>
+               <totalRedeemedPoints>0.0</totalRedeemedPoints>
+               <bonusDetails>
+                  <bonusCode>ENROL</bonusCode>
+                  <bonusName>Enrollment Bonus</bonusName>
+                  <Points>2500.0</Points>
+               </bonusDetails>
+            </accountDetails>
+         </accountBalance>
+         <txnHeader>
+            <transactionID>E499A277B7538E2F07CB809758E98D97</transactionID>
+            <userName>mtn</userName>
+            <timeStamp>2020-01-11T10:33:52.303Z</timeStamp>
+         </txnHeader>
+      </ns5:CreateAccrualActivityResponseData>
+   </soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,25 @@
+query CartInput {
+  cart {
+    voyagerPointsUsed: attribute(key: "voyager_points_used") { value }
+    voyagerPointsRate: attribute(key: "voyager_points_rate") { value }
+    voyagerSessionId: attribute(key: "voyager_session_id") { value }
+    cost {
+      subtotalAmount {
+        amount
+        currencyCode
+      }
+    }
+    lines {
+      id
+      cost {
+        subtotalAmount {
+          amount
+          currencyCode
+        }
+      }
+    }
+  }
+  discount {
+    discountClasses
+  }
+}

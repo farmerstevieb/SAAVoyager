@@ -1,0 +1,117 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsu:Timestamp wsu:Id="Timestamp-314742169" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Created>2015-02-02T08:50:49.361Z</wsu:Created>
+            <wsu:Expires>2015-02-02T08:52:29.361Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-296963571" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>iloyal-web</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">xTCk2RjvzrymBIsSCtgKTIWMpLg=</wsse:Password>
+            <wsse:Nonce>f9NMFJav40uu1ogYYsbygg==</wsse:Nonce>
+            <wsu:Created>2015-02-02T08:50:49.361Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns5:MemberProfileDetailsResponse xmlns:ns5="http://www.ibsplc.com/iloyal/member/memberprofiledetail/v2.7/type/">
+         <isAccrualValid>NA</isAccrualValid>
+         <isRedemptionValid>NA</isRedemptionValid>
+         <lastActivityDate>31-Mar-2007</lastActivityDate>
+         <memberAccount>
+            <companyCode>SA</companyCode>
+            <programCode>VOYAG</programCode>
+            <membershipNumber>32757624</membershipNumber>
+            <customerNumber>101859262</customerNumber>
+            <accountStatus>I</accountStatus>
+            <enrolmentSource>W</enrolmentSource>
+            <enrollmentSourceCode>WEB</enrollmentSourceCode>
+            <enrolmentDate>10-Apr-2006 23:17:26</enrolmentDate>
+            <periodType>U</periodType>
+            <period>0</period>
+            <extendToDay>0</extendToDay>
+            <extendToMonth>0</extendToMonth>
+            <tier>300</tier>
+            <tierFromDate>17-Dec-2006</tierFromDate>
+            <tierToDate>31-Dec-2026</tierToDate>
+            <memberProfile>
+               <companyCode>SA</companyCode>
+               <membershipNumber>32757624</membershipNumber>
+               <customerNumber>101859262</customerNumber>
+               <membershipType>I</membershipType>
+               <membershipStatus>A</membershipStatus>
+               <enrollmentSource>W</enrollmentSource>
+               <customerPassword>FEA7F657F56A2A448DA7D4B535EE5E279CAF3D9A</customerPassword>
+               <individualInfo>
+                  <memberNationality>ZA</memberNationality>
+                  <preferredLanguage>EN</preferredLanguage>
+                  <preferredAddress>H</preferredAddress>
+                  <title>MR</title>
+                  <givenName>MARK</givenName>
+                  <familyName>PENWILL</familyName>
+                  <displayName>MARK</displayName>
+                  <initials>M</initials>
+                  <gender>M</gender>
+                  <dateOfBirth>24-Jan-1987</dateOfBirth>
+                  <countryOfResidence>GB</countryOfResidence>
+                  <idNumber>8701245057083</idNumber>
+                  <designation>MR</designation>
+                  <memberContactInfos>
+                     <addressType>H</addressType>
+                     <addressLine1>9 TUCKER CLOSE</addressLine1>
+                     <addressLine2 xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <city>HIGH WYCOMBE</city>
+                     <state xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <country>GB</country>
+                     <zipCode>HP13 6QN</zipCode>
+                     <addressInvalid>false</addressInvalid>
+                     <emailAddress>101859262@iloyaldummyemail.com</emailAddress>
+                     <phoneAreaCode>1494</phoneAreaCode>
+                     <phoneNumber>101859262000</phoneNumber>
+                  </memberContactInfos>
+                  <memberContactInfos>
+                     <addressType>B</addressType>
+                     <addressLine1 xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <addressLine2 xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <city xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <state xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <country xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <zipCode xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                     <addressInvalid>true</addressInvalid>
+                     <emailAddress>101859262@iloyaldummyemail.com</emailAddress>
+                  </memberContactInfos>
+               </individualInfo>
+            </memberProfile>
+            <memberPreferences>
+               <preferenceCode>6</preferenceCode>
+               <sequenceNumber>1</sequenceNumber>
+               <preferenceValue>Y</preferenceValue>
+               <type>C</type>
+            </memberPreferences>
+            <memberPreferences>
+               <preferenceCode>7</preferenceCode>
+               <sequenceNumber>1</sequenceNumber>
+               <preferenceValue>Y</preferenceValue>
+               <type>C</type>
+            </memberPreferences>
+            <memberPreferences>
+               <preferenceCode>1</preferenceCode>
+               <sequenceNumber>1</sequenceNumber>
+               <preferenceValue>E</preferenceValue>
+               <type>C</type>
+            </memberPreferences>
+            <memberDynamicAttributes>
+               <attributeCode>5</attributeCode>
+               <attributeValue>MR    M    MARK           PENWILL</attributeValue>
+               <type>C</type>
+            </memberDynamicAttributes>
+         </memberAccount>
+         <txnHeader>
+            <transactionID/>
+            <userName>mtn</userName>
+            <transactionToken/>
+            <timeStamp>2020-01-11T10:33:52.303Z</timeStamp>
+         </txnHeader>
+      </ns5:MemberProfileDetailsResponse>
+   </soapenv:Body>
+</soapenv:Envelope>

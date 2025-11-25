@@ -1,0 +1,50 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:type="http://www.ibsplc.com/iloyal/accrual/activity/v2.7/type/">
+    <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"> 
+         <wsu:Timestamp wsu:Id="Timestamp-20046406" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"> 
+            <wsu:Created>2020-01-11T10:33:52.303Z</wsu:Created>
+            <wsu:Expires>2020-01-11T10:33:52.303Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-20914066" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"> 
+            <wsse:Username>mtn</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">JC9UDunh4V5pRSEofoUgTur9u5g=</wsse:Password>
+            <wsse:Nonce>5lXRolFB0oWSOjRgioe4DA==</wsse:Nonce>
+            <wsu:Created>2020-01-11T10:33:52.303Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <type:CancelAccrualActivityRequestData>
+         <companyCode>SA</companyCode>
+         <membershipNumber>32757624</membershipNumber>
+         <businessType>N</businessType>
+         <!--Optional:-->
+         <accrualActivityReference>22122553</accrualActivityReference>
+         <!--Optional:-->
+                  <!--Optional:-->
+         <nonAirAccrualActivityDetails>
+            <partnerCategory>L</partnerCategory>
+            <partnerCode>MTS</partnerCode>
+            <billNumber></billNumber>
+            <pointValue>700</pointValue>
+            <amountSpent>87.78</amountSpent>
+         </nonAirAccrualActivityDetails>
+         <!--Zero or more repetitions:-->
+	   <accrualActivityPartnerAttributes>
+            	<attributeKey>PNT</attributeKey>
+            	<attributeValue>100</attributeValue>
+            </accrualActivityPartnerAttributes>
+	    <accrualActivityPartnerAttributes>
+            	<attributeKey>BNSPNT</attributeKey>
+            	<attributeValue>100</attributeValue>
+            </accrualActivityPartnerAttributes>
+         <txnHeader>
+            <transactionID></transactionID>
+            <userName>mtn</userName>
+            <!--Optional:-->
+            <transactionToken>E499A277B7538E2F07CB809758E98D97</transactionToken>
+            <timeStamp>2020-01-11T10:33:52.303Z</timeStamp>
+         </txnHeader>
+      </type:CancelAccrualActivityRequestData>
+   </soapenv:Body>
+</soapenv:Envelope>

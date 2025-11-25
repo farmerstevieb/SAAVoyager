@@ -1,0 +1,33 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsu:Timestamp wsu:Id="Timestamp-970554539" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Created>2015-03-04T09:08:50.446Z</wsu:Created>
+            <wsu:Expires>2015-03-04T09:10:30.446Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-870831892" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>iloyal-web</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">A3oHJrGv4009F+7gN5QbxO5pLpg=</wsse:Password>
+            <wsse:Nonce>qrSCoYntVJLarPCp9286HA==</wsse:Nonce>
+            <wsu:Created>2015-03-04T09:08:50.446Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns7:IssueCertificateResponse xmlns:ns7="http://www.ibsplc.com/iloyal/redemption/issuecertificate/v2.7/type/">
+         <issueCertificateStatus>
+            <certificateNumber>1000109807</certificateNumber>
+            <activityNumber>ACT25152432</activityNumber>
+            <membershipNumber>32757624</membershipNumber>
+            <givenName>MARK</givenName>
+            <familyName>PENWILL</familyName>
+         </issueCertificateStatus>
+         <txnHeader>
+            <transactionID>55D6308230786FB3D994D3DDBD3AE5AA</transactionID>
+            <userName>mtn</userName>
+            <transactionToken/>
+            <timeStamp>2020-01-11T10:33:52.303Z</timeStamp>
+         </txnHeader>
+      </ns7:IssueCertificateResponse>
+   </soapenv:Body>
+</soapenv:Envelope>

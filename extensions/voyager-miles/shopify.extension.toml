@@ -1,0 +1,30 @@
+# Learn more about configuring your checkout UI extension:
+# https://shopify.dev/api/checkout-extensions/checkout/configuration
+
+# The version of APIs your extension will receive. Learn more:
+# https://shopify.dev/docs/api/usage/versioning
+api_version = "2025-07"
+
+
+[[extensions]]
+name = "voyager-miles"
+handle = "voyager-miles"
+
+uid = "ddc0ea3e-91ad-0aac-eb3d-43deab570346237cfc42"
+
+type = "ui_extension"
+
+
+[[extensions.targeting]]
+module = "./src/Checkout.tsx"
+target = "purchase.checkout.payment-method-list.render-before"
+
+
+[extensions.capabilities]
+# Gives your extension access to directly query Shopify's storefront API.
+# https://shopify.dev/docs/api/checkout-ui-extensions/unstable/configuration#api-access
+api_access = true
+
+network_access = true
+
+

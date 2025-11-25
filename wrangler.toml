@@ -1,0 +1,54 @@
+name = "saa-voyager-app"
+main = "server/worker.js"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "saa-voyager-app-prod"
+
+[env.production.vars]
+NODE_ENV = "uat"
+SHOPIFY_APP_URL = "https://saa-voyager-app-prod.tofmail2022.workers.dev"
+SHOPIFY_STORE_DOMAIN = "https://nian-store-111.myshopify.com"
+SHOPIFY_SECRET = "680a897460c7c9f3cafaf3533265d173"
+
+[[env.production.kv_namespaces]]
+binding = "APP_SETTINGS"
+id = "3021b41b08544ea58860689eb1d056a9"
+preview_id = "3021b41b08544ea58860689eb1d056a9"
+
+[env.staging]
+name = "saa-voyager-app-staging"
+
+[env.development]
+name = "saa-voyager-app-dev"
+
+# Environment variables
+[vars]
+NODE_ENV = "uat"
+SHOPIFY_APP_URL = "https://saa-voyager-app-prod.tofmail2022.workers.dev"
+SHOPIFY_STORE_DOMAIN = "https://nian-store-111.myshopify.com"
+SHOPIFY_SECRET = "680a897460c7c9f3cafaf3533265d173"
+
+# wrangler.toml (wrangler v3.88.0^)
+[observability.logs]
+enabled = true
+
+
+
+
+
+
+# KV Namespace for storing app settings
+# Note: KV namespaces are configured per environment (see [env.production] section)
+
+# Secrets (set these via wrangler secret put)
+# wrangler secret put VOYAGER_USERNAME
+# wrangler secret put VOYAGER_PASSWORD
+# wrangler secret put VOYAGER_AUTH_URL
+# wrangler secret put VOYAGER_ACCOUNT_URL
+# wrangler secret put VOYAGER_MEMBER_PROFILE_URL
+# wrangler secret put VOYAGER_ISSUE_URL
+# wrangler secret put VOYAGER_MARK_URL
+# wrangler secret put VOYAGER_RECREDIT_URL
+# wrangler secret put VOYAGER_LOGOUT_URL

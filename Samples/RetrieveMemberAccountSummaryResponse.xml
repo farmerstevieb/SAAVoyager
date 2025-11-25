@@ -1,0 +1,185 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsu:Timestamp wsu:Id="Timestamp-1641321781" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Created>2015-02-02T08:47:20.080Z</wsu:Created>
+            <wsu:Expires>2015-02-02T08:49:00.080Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-1076842150" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>iloyal-web</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">AIPEJ7JVsOqpKAu07hBIUWCFI+U=</wsse:Password>
+            <wsse:Nonce>24VwrDmMVleScqGcv6CXnQ==</wsse:Nonce>
+            <wsu:Created>2015-02-02T08:47:20.080Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns3:AccountSummaryResponse xmlns:ns3="http://www.ibsplc.com/iloyal/member/accountsummary/v2.7/type/">
+         <companyCode>SA</companyCode>
+         <programCode>VOYAG</programCode>
+         <membershipNumber>32757624</membershipNumber>
+         <title>MR</title>
+         <givenName>MARK</givenName>
+         <familyName>PENWILL</familyName>
+         <membershipType>Individual</membershipType>
+         <membershipStatus>Active</membershipStatus>
+         <accountStatus>Inactive</accountStatus>
+         <suspended>false</suspended>
+         <tierCode>300</tierCode>
+         <tierName>Blue</tierName>
+         <tierFromDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+         <tierToDate>31-Dec-2026</tierToDate>
+         <prospectTier xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+         <companyName xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+         <expiryDate xsi:nil="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+         <lastActivityDate>31-Mar-2010</lastActivityDate>
+         <activityType>Expiry of Miles</activityType>
+         <pointDetails>
+            <pointType>BASE</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>14579.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>BONUS</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>PURCH</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>MNREINST</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>MNBONEXP</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>TEST1</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>TESTA</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>PGBONMT1</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>PGBONMT2</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>PGBONMT3</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>COMPLAT5YRS</pointType>
+            <pointTypeGroup>Available Balance</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>TRMIL</pointType>
+            <pointTypeGroup>Tier Miles</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>SAAML</pointType>
+            <pointTypeGroup>SAA Miles</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <pointDetails>
+            <pointType>STRML</pointType>
+            <pointTypeGroup>Star Miles</pointTypeGroup>
+            <totalAccuredpoints>0.0</totalAccuredpoints>
+            <totalRedeemedpoints>0.0</totalRedeemedpoints>
+            <pointsToNextTier>0.0</pointsToNextTier>
+            <pointsForTierRetention>0.0</pointsForTierRetention>
+            <points>0.0</points>
+            <creditLimit>0.0</creditLimit>
+         </pointDetails>
+         <txnHeader>
+            <transactionID/>
+            <userName>mtn</userName>
+            <transactionToken/>
+            <timeStamp>2020-01-11T10:33:52.303Z</timeStamp>
+         </txnHeader>
+      </ns3:AccountSummaryResponse>
+   </soapenv:Body>
+</soapenv:Envelope>

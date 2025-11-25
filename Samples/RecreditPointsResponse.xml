@@ -1,0 +1,27 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsu:Timestamp wsu:Id="Timestamp-199113448" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Created>2015-03-04T09:36:25.234Z</wsu:Created>
+            <wsu:Expires>2015-03-04T09:38:05.234Z</wsu:Expires>
+         </wsu:Timestamp>
+         <wsse:UsernameToken wsu:Id="UsernameToken-386422730" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsse:Username>iloyal-web</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">BvuCLwT4zKAAwE6OkW3h2TELlT0=</wsse:Password>
+            <wsse:Nonce>1/gEdgsDPfzFmJHWUIBBRA==</wsse:Nonce>
+            <wsu:Created>2015-03-04T09:36:25.234Z</wsu:Created>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+   <soapenv:Body>
+      <ns15:RecreditPointsResponse xmlns:ns15="http://www.ibsplc.com/iloyal/redemption/RecreditPoints/v2.7/type/">
+         <status>S</status>
+         <txnHeader>
+            <transactionID>55D6308230786FB3D994D3DDBD3AE5AA</transactionID>
+            <userName>mtn</userName>
+            <transactionToken/>
+            <timeStamp>2020-01-11T10:33:52.303Z</timeStamp>
+         </txnHeader>
+      </ns15:RecreditPointsResponse>
+   </soapenv:Body>
+</soapenv:Envelope>

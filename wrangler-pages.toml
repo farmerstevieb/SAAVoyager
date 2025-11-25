@@ -1,0 +1,15 @@
+# Cloudflare Pages configuration for React app
+# This is used when deploying via wrangler pages deploy
+
+name = "saa-voyager-app-frontend"
+compatibility_date = "2024-01-15"
+
+[build]
+command = "cd app && npm install && npm run build"
+cwd = "."
+watch_dir = "app"
+
+[build.upload]
+format = "service-worker"
+dir = "app/dist"
+

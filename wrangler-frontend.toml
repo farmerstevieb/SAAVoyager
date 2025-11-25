@@ -1,0 +1,8 @@
+name = "saa-voyager-frontend"
+main = "server/frontend-worker.js"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Serve static assets from app/dist using assets directory
+# When deploying, use: wrangler deploy --assets ./app/dist
+

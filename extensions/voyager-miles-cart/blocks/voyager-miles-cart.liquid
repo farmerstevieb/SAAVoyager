@@ -1,0 +1,187 @@
+{% comment %} Include the CSS and JS files {% endcomment %}
+{{ 'voyager-miles-cart.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'voyager-miles-cart.js' | asset_url }}" defer></script>
+
+{% comment %}
+  SAA Voyager Miles Cart Block
+  This block integrates Voyager loyalty points into the cart page
+{% endcomment %}
+
+<div class="voyager-miles-cart-block" 
+     data-voyager-api-url="{{ block.settings.voyager_api_url | default: 'https://saa-voyager-app-prod.tofmail2022.workers.dev/api/voyager' }}"
+     data-points-rate="{{ block.settings.points_to_zar_rate | default: '0.1' }}"
+     data-min-points="{{ block.settings.min_points_usage | default: 1000 }}"
+     data-max-points="{{ block.settings.max_points_usage | default: 50000 }}">
+  
+  <!-- Header -->
+  <div class="voyager-header">
+    <h2>PAY WITH SAA VOYAGER MILES</h2>
+  </div>
+  
+  <!-- Navigation Tabs -->
+  <div class="voyager-tabs">
+    <button class="voyager-tab" data-tab="note" type="button">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Note</span>
+    </button>
+    <button class="voyager-tab" data-tab="shipping" type="button">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 3H17L22 12V20H1V3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M22 12H17L13 8H1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/>
+        <circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <span>Shipping</span>
+    </button>
+    <button class="voyager-tab" data-tab="voucher" type="button">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 7H4C2.89543 7 2 7.89543 2 9V15C2 16.1046 2.89543 17 4 17H20C21.1046 17 22 16.1046 22 15V9C22 7.89543 21.1046 7 20 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 7V17M16 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 10C12.5523 10 13 9.55228 13 9C13 8.44772 12.5523 8 12 8C11.4477 8 11 8.44772 11 9C11 9.55228 11.4477 10 12 10Z" fill="currentColor"/>
+        <path d="M12 16C12.5523 16 13 15.5523 13 15C13 14.4477 12.5523 14 12 14C11.4477 14 11 14.4477 11 15C11 15.5523 11.4477 16 12 16Z" fill="currentColor"/>
+      </svg>
+      <span>Voucher</span>
+    </button>
+    <button class="voyager-tab active" data-tab="voyager" type="button">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 16V8C21 6.93913 20.5786 5.92172 19.8284 5.17157C19.0783 4.42143 18.0609 4 17 4H7C5.93913 4 4.92172 4.42143 4.17157 5.17157C3.42143 5.92172 3 6.93913 3 8V16C3 17.0609 3.42143 18.0783 4.17157 18.8284C4.92172 19.5786 5.93913 20 7 20H17C18.0609 20 19.0783 19.5786 19.8284 18.8284C20.5786 18.0783 21 17.0609 21 16Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M7 8L12 13L17 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>SAA Voyager</span>
+    </button>
+  </div>
+  
+  <div class="voyager-miles-section">
+    <!-- Login Form -->
+    <div class="voyager-login-form" id="voyager-login-form">
+      <div class="voyager-login-header">
+        <div class="voyager-title-with-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h3>SAA Voyager Miles</h3>
+        </div>
+        <p class="voyager-instruction">Log in securely to view your balance and apply Miles to this purchase</p>
+      </div>
+      
+      <div class="voyager-input-group">
+        <label for="voyager-username">Voyager Number</label>
+        <input type="text" id="voyager-username" name="username" placeholder="Enter your Voyager number" required>
+      </div>
+      
+      <div class="voyager-input-group">
+        <label for="voyager-password">Pin</label>
+        <input type="password" id="voyager-password" name="password" placeholder="Enter your PIN" required>
+      </div>
+      
+      <div class="voyager-button-group">
+        <button type="button" class="voyager-cancel-btn" id="voyager-cancel-btn">CANCEL</button>
+        <button type="submit" class="voyager-login-btn" id="voyager-login-btn">
+          LOGIN & CHECK MILES
+        </button>
+      </div>
+      
+      <p class="voyager-disclaimer">*If you'd like to pay for your full order and delivery using Voyager Miles, you can do so on the final payment page.</p>
+      
+      <div id="voyager-status" class="voyager-status"></div>
+    </div>
+    
+    <!-- Points Display -->
+    <div class="voyager-points-display" id="voyager-points-display" style="display: none;">
+      <div class="voyager-points-header">
+        <div class="voyager-title-with-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 13C13.6569 13 15 11.6569 15 10C15 8.34315 13.6569 7 12 7C10.3431 7 9 8.34315 9 10C9 11.6569 10.3431 13 12 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h3>SAA Voyager Miles</h3>
+        </div>
+      </div>
+      
+      <div class="voyager-points-info">
+        <div class="points-row">
+          <span class="points-label">Available Miles:</span>
+          <span class="points-value orange" id="points-value">Loading...</span>
+        </div>
+        
+        <div class="points-row">
+          <span class="points-label">Value in ZAR:</span>
+          <span class="points-value orange" id="zar-value">Calculating...</span>
+        </div>
+        
+        <div class="points-row">
+          <span class="points-label">Cart Total:</span>
+          <span class="points-value orange" id="cart-total">R 0.00</span>
+        </div>
+        
+        <div class="points-row total-after">
+          <span class="points-label">Total after applied Miles:</span>
+          <span class="points-value orange large" id="total-after-miles">R 0.00</span>
+        </div>
+      </div>
+      
+      <div class="points-usage">
+        <div class="zar-input-container">
+          <label for="zar-to-use" class="zar-input-label">Enter the Rand amount you would like to redeem</label>
+          <div class="zar-input-wrapper">
+            <input type="number" id="zar-to-use" min="0" step="0.01" placeholder="R 100" value="100">
+            <span id="zar-to-points-display" class="zar-points-display"></span>
+          </div>
+        </div>
+        
+        <div class="voyager-button-group">
+          <button type="button" class="voyager-cancel-btn" id="voyager-cancel-points-btn">CANCEL</button>
+          <button id="apply-points" class="apply-points-btn" disabled>
+            APPLY MILES
+          </button>
+        </div>
+      </div>
+      
+      <p class="voyager-disclaimer">*If you'd like to pay for your full order and delivery using Voyager Miles, you can do so on the final payment page.</p>
+      
+      <div id="points-status" class="points-status"></div>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "SAA Voyager Miles",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "voyager_api_url",
+      "label": "Voyager API URL",
+      "default": "https://saa-voyager-app-prod.tofmail2022.workers.dev/api/voyager",
+      "info": "Backend API endpoint for Voyager services"
+    },
+    {
+      "type": "text",
+      "id": "points_to_zar_rate",
+      "label": "Points to ZAR Rate",
+      "default": "0.1",
+      "info": "Conversion rate (1 point = R0.01)"
+    },
+    {
+      "type": "number",
+      "id": "min_points_usage",
+      "label": "Minimum Points Usage",
+      "default": 1000,
+      "info": "Minimum points that can be used"
+    },
+    {
+      "type": "number",
+      "id": "max_points_usage",
+      "label": "Maximum Points Usage",
+      "default": 50000,
+      "info": "Maximum points that can be used"
+    }
+  ]
+}
+{% endschema %}
