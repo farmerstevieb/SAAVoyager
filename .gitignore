@@ -5,6 +5,11 @@ yarn-debug.log*
 yarn-error.log*
 .shopify/
 .wrangler/
+voyager/
+fetch-account.js
+accounts.txt
+generate-accounts.js
+accounts-generated.txt
 # Environment variables
 .env
 .env.local

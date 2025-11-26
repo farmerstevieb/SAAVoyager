@@ -249,9 +249,9 @@ function VoyagerMilesCheckout() {
       await setAttribute("voyager_points_rate", effectivePointsRate.toString());
 
       setApproved(true);
-      setMessage("Login successful! Enter discount amount to apply points.");
+      setMessage("Login successful! You can now apply Voyager Miles.");
       
-      console.log("[Voyager Checkout] ✅ Login complete - ready for user to input discount amount");
+      console.log("[Voyager Checkout] ✅ Login complete - ready to apply miles");
 
     } catch (e) {
       console.error("[Voyager Checkout] ❌ Error applying points:", e);
@@ -378,22 +378,30 @@ function VoyagerMilesCheckout() {
     }
   }, []);
 
+  // Calculate order total and total after miles
+  const orderTotal = subtotalAmount?.amount ? parseFloat(subtotalAmount.amount) / 100 : 0;
+  const totalAfterMiles = Math.max(0, orderTotal - discountZar);
+
   return (
     <BlockStack spacing="base">
-      {/* Header - Similar to cart extension */}
+      {/* Header - Match design */}
       <BlockStack spacing="tight">
         <Text emphasis="bold" size="large">
-          Voyager Points
+          Pay With SAA Voyager Miles
+        </Text>
+        <Text appearance="subdued" size="small">
+          To pay the full amount using SAA Miles, select Apply Miles.
         </Text>
       </BlockStack>
 
       {!approved ? (
-        /* Login Form - Similar to cart extension */
+        /* Login Form - Match design */
         <BlockStack spacing="base">
           <TextField
             label="Voyager Number"
             value={userId}
             onChange={setUserId}
+            placeholder="Voyager Number"
             required
           />
 
@@ -401,8 +409,20 @@ function VoyagerMilesCheckout() {
             label="PIN"
             value={pin}
             onChange={setPin}
+            placeholder="PIN"
             required
           />
+
+          {/* Split Payments Info Box */}
+          <Banner status="info">
+            <InlineStack spacing="tight" blockAlignment="center">
+              <Text>✈️</Text>
+              <Text size="small">
+                For split payments (SAA and other methods), please return to your{" "}
+                <Text emphasis="bold">cart.</Text>
+              </Text>
+            </InlineStack>
+          </Banner>
 
           <Button
             kind="primary"
@@ -410,81 +430,132 @@ function VoyagerMilesCheckout() {
             disabled={!userId || !pin}
             onPress={handleCheckAndApply}
           >
-            Login & Check Points
+            Apply Voyager Miles
           </Button>
 
           {error && (
-            <Text appearance="critical" size="small">{error}</Text>
+            <Banner status="critical">
+              <Text size="small">{error}</Text>
+            </Banner>
           )}
         </BlockStack>
       ) : (
-        /* Points Display - Similar to cart extension */
+        /* Points Display - Match design */
         <BlockStack spacing="base">
-          {/* Points Header with Logout */}
-          <InlineStack spacing="base" blockAlignment="center">
-            <Text emphasis="bold">Voyager Points</Text>
-            <Button
-              kind="plain"
-              onPress={handleRemoveMiles}
-              loading={loading}
-            >
-              Logout
-            </Button>
-          </InlineStack>
-
-          {/* Points Info */}
+          {/* Header */}
           <BlockStack spacing="tight">
-            <InlineStack spacing="base" blockAlignment="center">
-              <Text>Available Points</Text>
+            <Text emphasis="bold" size="large">
+              SAA Voyager Miles
+            </Text>
+            <Text appearance="subdued" size="small">
+              To pay the full amount using SAA Miles, select Apply Voyager Miles.
+            </Text>
+          </BlockStack>
+
+          {/* Points Info - Match design layout */}
+          <BlockStack spacing="tight">
+            <InlineStack spacing="base" blockAlignment="spaceBetween">
+              <Text>Available Miles:</Text>
               <Text emphasis="bold">{pointsBalance.toLocaleString()}</Text>
             </InlineStack>
-            <InlineStack spacing="base" blockAlignment="center">
-              <Text>Value in ZAR</Text>
-              <Text emphasis="bold">R{balanceZar.toFixed(2)}</Text>
+            <InlineStack spacing="base" blockAlignment="spaceBetween">
+              <Text>Value in ZAR:</Text>
+              <Text emphasis="bold">R {balanceZar.toFixed(2)}</Text>
+            </InlineStack>
+            <InlineStack spacing="base" blockAlignment="spaceBetween">
+              <Text>Order Total:</Text>
+              <Text emphasis="bold">R {orderTotal.toFixed(2)}</Text>
+            </InlineStack>
+            {/* Divider line effect */}
+            <BlockStack spacing="tight">
+              <Text size="small" appearance="subdued">─────────────</Text>
+            </BlockStack>
+            <InlineStack spacing="base" blockAlignment="spaceBetween">
+              <Text emphasis="bold">Total after applied Miles:</Text>
+              <Text emphasis="bold" size="large">R {totalAfterMiles.toFixed(2)}</Text>
             </InlineStack>
           </BlockStack>
 
-          {/* ZAR Discount Input Section */}
-          {pointsToApply === 0 ? (
-            <BlockStack spacing="tight">
-              <Text size="small" emphasis="bold">Discount Amount (ZAR)</Text>
+          {/* Split Payments Info Box */}
+          <Banner status="info">
+            <InlineStack spacing="tight" blockAlignment="center">
+              <Text>✈️</Text>
+              <Text size="small">
+                For split payments (SAA and other methods), please return to your{" "}
+                <Text emphasis="bold">cart.</Text>
+              </Text>
+            </InlineStack>
+          </Banner>
+
+          {/* Apply Miles Button - Apply Full Amount */}
+          {pointsToApply === 0 && (
+            <Button
+              kind="primary"
+              loading={loading}
+              disabled={orderTotal <= 0 || orderTotal > balanceZar}
+              onPress={async () => {
+                setLoading(true);
+                setError("");
+                setMessage("");
+                
+                try {
+                  const pointsNeeded = Math.ceil(orderTotal / effectivePointsRate);
+                  const discountAmount = pointsNeeded * effectivePointsRate;
+                  const remainingPoints = pointsBalance - pointsNeeded;
+                  
+                  // Get session ID from attributes
+                  const sessionIdAttr = attributes?.find?.((a: any) => a?.key === "voyager_session_id");
+                  const sessionId = sessionIdAttr?.value || "";
+                  
+                  if (!sessionId) {
+                    setError("Session ID not found. Please log in again.");
+                    setLoading(false);
+                    return;
+                  }
+                  
+                  await setAttribute("voyager_points_used", pointsNeeded.toString());
+                  await setAttribute("voyager_points_rate", effectivePointsRate.toString());
+                  await setAttribute("voyager_remaining_points", remainingPoints.toString());
+                  await setAttribute("voyager_discount_amount", discountAmount.toFixed(2));
+                  await setAttribute("voyager_points_value", discountAmount.toString());
+                  await setAttribute("voyager_session_id", sessionId);
+                  await setAttribute("voyager_total_points", pointsBalance.toString());
+                  
+                  setPointsToApply(pointsNeeded);
+                  setDiscountZar(discountAmount);
+                  setMessage("Voyager Miles applied successfully!");
+                } catch (e: any) {
+                  setError(e.message || "Failed to apply Voyager Miles.");
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              Apply Voyager Miles
+            </Button>
+          )}
+          
+          {/* Applied Points Success Message */}
+          {pointsToApply > 0 && (
+            /* Applied Points Success Message */
+            <Banner status="success">
               <InlineStack spacing="tight" blockAlignment="center">
-                <TextField
-                  label="Discount Amount (ZAR)"
-                  value={zarToApply}
-                  onChange={setZarToApply}
-                />
-                <Button
-                  kind="primary"
-                  loading={loading}
-                  disabled={!zarToApply || parseFloat(zarToApply) <= 0}
-                  onPress={handleApplyZarDiscount}
-                >
-                  Apply
-                </Button>
+                <Text>✈️</Text>
+                <Text emphasis="bold">Voyager Miles Applied Successfully</Text>
               </InlineStack>
-            </BlockStack>
-          ) : (
-            /* Applied Points Info */
-            <BlockStack spacing="tight">
-              <Text appearance="success" size="small" emphasis="bold">
-                ✅ Points Applied
-              </Text>
-              <Text appearance="subdued" size="small">
-                Discount: R{discountZar.toFixed(2)}
-              </Text>
-              <Text appearance="subdued" size="small">
-                Points used: {pointsToApply.toLocaleString()}
-              </Text>
-            </BlockStack>
+            </Banner>
           )}
 
           {message && (
-            <Text appearance="success" size="small">{message}</Text>
+            <Banner status="success">
+              <Text size="small">{message}</Text>
+            </Banner>
           )}
           
           {error && (
-            <Text appearance="critical" size="small">{error}</Text>
+            <Banner status="critical">
+              <Text size="small">{error}</Text>
+            </Banner>
           )}
         </BlockStack>
       )}

@@ -137,6 +137,216 @@ class VoyagerService {
     return Boolean(sessionId);
   }
 
+  // Point type priority for FEFO (First Expiry, First Out) when expiry dates are the same
+  // Lower number = higher priority (use first)
+  getPointTypePriority(pointType) {
+    const priorityMap = {
+      'MNBONEXP': 1,    // 1 month - highest priority
+      'MNREINST': 2,    // 1 month
+      '3MBON': 3,       // 3 months
+      '6MBON': 4,       // 6 months
+      '1YRBON': 5,      // 12 months
+      'REINST': 6,      // 12 months
+      'RFBON01': 7,     // 12 months
+      'RFBON02': 8,     // 12 months
+      'RFBON03': 9,     // 24 months
+      'BASE': 10,       // 36 months
+      'BONUS': 11,      // 36 months
+      'EMDB': 12,       // 36 months
+      'EMDR': 13,       // 36 months
+      'MPURCH': 14,     // 36 months
+      'PURCH': 15       // 36 months - lowest priority
+    };
+    return priorityMap[pointType] || 99; // Unknown types get lowest priority
+  }
+
+  // Parse expiry date string to Date object for comparison
+  // Format: "31-Dec-2025" or "31-Dec-2025" or "2025-12-31"
+  parseExpiryDate(dateStr) {
+    if (!dateStr || dateStr === 'null' || dateStr.trim() === '') {
+      return null;
+    }
+    
+    try {
+      // Try DD-MMM-YYYY format (e.g., "31-Dec-2025")
+      const parts = dateStr.trim().split('-');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = monthNames.indexOf(parts[1]);
+        const year = parseInt(parts[2], 10);
+        
+        if (month >= 0 && day > 0 && year > 0) {
+          return new Date(year, month, day);
+        }
+      }
+      
+      // Try ISO format (e.g., "2025-12-31")
+      const isoDate = new Date(dateStr);
+      if (!isNaN(isoDate.getTime())) {
+        return isoDate;
+      }
+    } catch (error) {
+      log('[FEFO] Error parsing expiry date:', { dateStr, error: error.message });
+    }
+    
+    return null;
+  }
+
+  // Select point type to deduct from based on FEFO logic
+  // Returns: { pointType, points, expiryDate } or null if insufficient balance
+  selectPointTypeForDeduction(pointTypes, pointsToDeduct) {
+    if (!pointTypes || pointTypes.length === 0) {
+      log('[FEFO] No point types available');
+      return null;
+    }
+
+    // Filter point types that have available balance
+    const availableTypes = pointTypes
+      .filter(pt => pt.points > 0 && pt.expiryDate)
+      .map(pt => ({
+        ...pt,
+        expiryDateObj: this.parseExpiryDate(pt.expiryDate)
+      }))
+      .filter(pt => pt.expiryDateObj !== null); // Only include valid expiry dates
+
+    if (availableTypes.length === 0) {
+      log('[FEFO] No point types with valid expiry dates');
+      return null;
+    }
+
+    // Sort by expiry date (earliest first), then by priority if same date
+    availableTypes.sort((a, b) => {
+      // First compare expiry dates
+      const dateDiff = a.expiryDateObj.getTime() - b.expiryDateObj.getTime();
+      if (dateDiff !== 0) {
+        return dateDiff; // Earlier expiry date comes first
+      }
+      
+      // If same expiry date, use priority
+      const priorityA = this.getPointTypePriority(a.pointType);
+      const priorityB = this.getPointTypePriority(b.pointType);
+      return priorityA - priorityB; // Lower priority number = higher priority
+    });
+
+    log('[FEFO] Sorted point types:', availableTypes.map(pt => ({
+      type: pt.pointType,
+      points: pt.points,
+      expiryDate: pt.expiryDate,
+      priority: this.getPointTypePriority(pt.pointType)
+    })));
+
+    // Select the first point type (earliest expiry, highest priority)
+    const selected = availableTypes[0];
+    
+    if (selected.points < pointsToDeduct) {
+      log('[FEFO] Selected point type has insufficient balance:', {
+        pointType: selected.pointType,
+        available: selected.points,
+        required: pointsToDeduct
+      });
+      // Could implement multi-type deduction here if needed
+      // For now, return null if insufficient
+      return null;
+    }
+
+    log('[FEFO] Selected point type for deduction:', {
+      pointType: selected.pointType,
+      points: selected.points,
+      expiryDate: selected.expiryDate,
+      pointsToDeduct
+    });
+
+    return {
+      pointType: selected.pointType,
+      points: selected.points,
+      expiryDate: selected.expiryDate
+    };
+  }
+
+  // Store session in KV (if available) for persistence across Worker instances
+  async storeSessionInKV(sessionId, sessionData) {
+    try {
+      if (this.env?.SESSIONS_KV) {
+        await this.env.SESSIONS_KV.put(sessionId, JSON.stringify(sessionData), { expirationTtl: 3600 }); // 1 hour TTL
+        log('[SESSION-KV] Stored session in KV:', { sessionId, hasMemberId: !!sessionData.memberId });
+        return true;
+      }
+    } catch (error) {
+      log('[SESSION-KV] Error storing session in KV:', error);
+    }
+    return false;
+  }
+
+  // Retrieve session from KV (if available)
+  async getSessionFromKV(sessionId) {
+    try {
+      if (this.env?.SESSIONS_KV) {
+        const sessionData = await this.env.SESSIONS_KV.get(sessionId);
+        if (sessionData) {
+          log('[SESSION-KV] Retrieved session from KV:', { sessionId, hasMemberId: !!JSON.parse(sessionData).memberId });
+          return JSON.parse(sessionData);
+        }
+      }
+    } catch (error) {
+      log('[SESSION-KV] Error retrieving session from KV:', error);
+    }
+    return null;
+  }
+
+  // Get or reconstruct session (tries KV first, then in-memory, then reconstructs from sessionId)
+  async getSession(sessionId) {
+    // Try in-memory first (fastest)
+    let session = this.sessions.get(sessionId);
+    if (session) {
+      log('[SESSION] Found session in memory:', { sessionId, memberId: session.memberId });
+      return session;
+    }
+
+    // Try KV storage (persistent across instances)
+    session = await this.getSessionFromKV(sessionId);
+    if (session) {
+      // Restore to in-memory cache for faster access
+      this.sessions.set(sessionId, session);
+      log('[SESSION] Restored session from KV to memory:', { sessionId, memberId: session.memberId });
+      return session;
+    }
+
+    // Fallback: Try to extract membership number from sessionId
+    // SessionId format: session_<base64(username:password)>_<timestamp>
+    // Note: Only first 20 chars of base64 are used, so full decode may not work
+    // But we can try to decode and extract username if possible
+    try {
+      const sessionIdParts = sessionId.split('_');
+      if (sessionIdParts.length >= 2) {
+        const encodedData = sessionIdParts[1];
+        // Try to decode (base64) - may fail if truncated
+        try {
+          const decoded = atob(encodedData + '=='); // Add padding in case it was truncated
+          const [username] = decoded.split(':');
+          if (username && username.length > 0) {
+            log('[SESSION] Reconstructed session from sessionId:', { sessionId, username });
+            // Return minimal session data - tokens will need to be re-fetched
+            // But we can at least identify the member
+            return {
+              username,
+              memberId: username, // Use username as memberId fallback
+              sessionToken: null, // Will need to be fetched again via re-auth
+              transactionId: null
+            };
+          }
+        } catch (decodeError) {
+          // Base64 decode failed - sessionId might be truncated
+          log('[SESSION] Could not decode sessionId (may be truncated):', decodeError.message);
+        }
+      }
+    } catch (error) {
+      log('[SESSION] Could not reconstruct session from sessionId:', error);
+    }
+
+    return null;
+  }
+
   async authenticateMember(username, password) {
     if (this.mockMode) {
       await this.simulateMockLatency('authenticateMember');
@@ -221,21 +431,24 @@ class VoyagerService {
       
       let response;
       try {
-        // Try HTTPS first
+        // Try HTTPS first with Cloudflare-specific options
+        // Note: Cloudflare Workers may have network restrictions accessing UAT servers
+        // If this fails, you may need a backend proxy server
         response = await fetch(this.authUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'text/xml; charset=utf-8',
             'SOAPAction': '',
-            'User-Agent': 'SAA-Voyager-Worker/1.0'
+            'User-Agent': 'SAA-Voyager-Worker/1.0',
+            'Host': 'ilstage.flysaa.com' // Explicit Host header
           },
           body: soapEnvelope,
-          // Add Cloudflare-specific options
+          // Cloudflare-specific fetch options
           cf: {
             cacheTtl: 0,
             cacheEverything: false,
-            // Try to bypass some restrictions
-            resolveOverride: null
+            // Try to resolve DNS directly
+            resolveOverride: '196.46.23.82' // Direct IP from test.js DNS workaround
           }
         });
       } catch (fetchError) {
@@ -280,23 +493,25 @@ class VoyagerService {
       });
       
       // Handle Cloudflare-specific errors
-      if (response.status === 530 || response.status === 1016) {
+      if (response.status === 530 || response.status === 1016 || response.status === 520) {
         const responseText = await response.text().catch(() => '');
-        console.log('Cloudflare 530/1016 Error - Origin unreachable');
+        console.log(`Cloudflare ${response.status} Error - Origin unreachable`);
         console.log('Error Response Body:', responseText);
         console.log('Error Response Headers:', Object.fromEntries(response.headers.entries()));
         
-        // Try HTTP if we were using HTTPS
+        // Try HTTP with direct IP if we were using HTTPS
         if (this.authUrl.startsWith('https://')) {
-          const httpUrl = this.authUrl.replace('https://', 'http://');
-          console.log(`⚠️  Trying HTTP fallback due to 530 error: ${httpUrl}`);
+          // Try HTTP with direct IP resolution (DNS workaround from test.js)
+          const httpUrl = this.authUrl.replace('https://ilstage.flysaa.com', 'http://196.46.23.82');
+          console.log(`⚠️  Trying HTTP with direct IP due to ${response.status} error: ${httpUrl}`);
           try {
             response = await fetch(httpUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'text/xml; charset=utf-8',
                 'SOAPAction': '',
-                'User-Agent': 'SAA-Voyager-Worker/1.0'
+                'User-Agent': 'SAA-Voyager-Worker/1.0',
+                'Host': 'ilstage.flysaa.com' // Important: set Host header for IP-based requests
               },
               body: soapEnvelope,
               cf: {
@@ -304,13 +519,19 @@ class VoyagerService {
                 cacheEverything: false
               }
             });
-            console.log(`HTTP fallback response status: ${response.status}`);
+            console.log(`HTTP with IP fallback response status: ${response.status}`);
+            
+            // If still failing, provide helpful error message
+            if (response.status >= 500 || response.status === 520 || response.status === 530) {
+              const errorText = await response.text().catch(() => '');
+              throw new Error(`Cloudflare Worker cannot reach UAT server. Status: ${response.status}. This is likely due to network restrictions. Solutions: 1) Use a backend proxy server, 2) Configure UAT server to allow Cloudflare IPs, 3) Use Cloudflare Tunnel. Error: ${errorText || responseText || 'No response body'}`);
+            }
           } catch (httpError) {
-            console.log('HTTP fallback failed:', httpError.message);
-            throw new Error(`HTTP 530: Origin server unreachable. This may indicate network restrictions or IP whitelisting requirements. Error: ${responseText || 'No response body'}`);
+            console.log('HTTP with IP fallback failed:', httpError.message);
+            throw new Error(`Cloudflare Worker network error (${response.status}): Cannot reach UAT server at ilstage.flysaa.com. This indicates the UAT server is blocking Cloudflare Workers or requires IP whitelisting. Solutions: 1) Deploy a backend proxy server (Node.js) that can access UAT, 2) Configure UAT firewall to allow Cloudflare IP ranges, 3) Use Cloudflare Tunnel. Original error: ${responseText || httpError.message}`);
           }
         } else {
-          throw new Error(`HTTP 530: Origin server unreachable. This may indicate network restrictions or IP whitelisting requirements. Error: ${responseText || 'No response body'}`);
+          throw new Error(`Cloudflare Worker network error (${response.status}): Cannot reach UAT server. Solutions: 1) Use a backend proxy server, 2) Configure UAT server to allow Cloudflare IPs. Error: ${responseText || 'No response body'}`);
         }
       }
       
@@ -341,18 +562,26 @@ class VoyagerService {
       if (result.success) {
         const sessionId = this.generateSessionId(username, password);
         try {
-          const memberId = result.memberId || username;
+          // Use username (membership number) as memberId if not in response
+          const memberId = (result.memberId && result.memberId !== 'unknown') ? result.memberId : username;
           console.log(`[AUTH] Setting up session - sessionId: ${sessionId}, memberId: ${memberId}, username: ${username}, sessionToken: ${result.sessionToken ? 'present' : 'missing'}`);
           
           // Check if we have an existing balance for this member
           const existingMemberBalance = this.memberBalances.get(memberId);
           console.log(`[AUTH] Existing member balance check - memberId: ${memberId}, existingBalance: ${existingMemberBalance || 'none'}`);
           
-          this.sessions.set(sessionId, {
+          const sessionData = {
             sessionToken: result.sessionToken,
+            transactionId: result.transactionId,
             memberId,
             username
-          });
+          };
+          
+          // Store in memory
+          this.sessions.set(sessionId, sessionData);
+          
+          // Also store in KV for persistence across Worker instances
+          await this.storeSessionInKV(sessionId, sessionData);
           
           let points;
           if (existingMemberBalance != null) {
@@ -371,6 +600,17 @@ class VoyagerService {
               console.log(`[AUTH] SOAP account summary success - points: ${points}, sessionId: ${sessionId}, memberId: ${memberId}`);
               this.sessionBalances.set(sessionId, points);
               this.memberBalances.set(memberId, points);
+              
+              // Store point types for FEFO logic
+              if (summary.pointTypes && summary.pointTypes.length > 0) {
+                const session = this.sessions.get(sessionId);
+                if (session) {
+                  session.pointTypes = summary.pointTypes;
+                  await this.storeSessionInKV(sessionId, session);
+                  console.log(`[AUTH] Stored ${summary.pointTypes.length} point types for FEFO logic`);
+                }
+              }
+              
               console.log(`[AUTH] Balance stored - sessionBalance: ${this.sessionBalances.get(sessionId)}, memberBalance: ${this.memberBalances.get(memberId)}, memberId: ${memberId}`);
             } else {
               // Do not fabricate balances; leave caches unset. Account summary can populate later.
@@ -378,7 +618,7 @@ class VoyagerService {
             }
           }
         } catch (error) {
-          const memberId = result.memberId || username;
+          const memberId = (result.memberId && result.memberId !== 'unknown') ? result.memberId : username;
           console.log(`[AUTH] Exception during balance initialization - error: ${error.message}, sessionId: ${sessionId}, memberId: ${memberId}`);
           
           // Check for existing member balance even in error case
@@ -396,7 +636,7 @@ class VoyagerService {
         return {
           success: true,
           sessionId: sessionId,
-          memberId: result.memberId || username,
+          memberId: (result.memberId && result.memberId !== 'unknown') ? result.memberId : username,
           message: 'Authentication successful'
         };
       } else {
@@ -407,9 +647,27 @@ class VoyagerService {
       }
     } catch (error) {
       log('SOAP authentication error:', error);
+      
+      // Provide user-friendly error messages
+      let userMessage = 'Authentication failed';
+      let errorCode = 'AUTH_ERROR';
+      
+      if (error.message.includes('530') || error.message.includes('1016') || error.message.includes('520')) {
+        userMessage = 'Unable to connect to Voyager service. Please try again later or contact support.';
+        errorCode = 'NETWORK_ERROR';
+        log('⚠️  Cloudflare Worker cannot reach UAT server. Consider using a backend proxy server.');
+      } else if (error.message.includes('network') || error.message.includes('unreachable')) {
+        userMessage = 'Service temporarily unavailable. Please try again in a few moments.';
+        errorCode = 'SERVICE_UNAVAILABLE';
+      } else {
+        userMessage = error.message || 'Authentication failed. Please check your credentials.';
+      }
+      
       return {
         success: false,
-        message: `Authentication failed: ${error.message}`
+        message: userMessage,
+        errorCode: errorCode,
+        technicalDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
       };
     }
   }
@@ -446,7 +704,7 @@ class VoyagerService {
     }
 
     let points = this.sessionBalances.get(sessionId);
-    const session = this.sessions.get(sessionId);
+    const session = await this.getSession(sessionId);
     const memberId = session?.memberId;
     
     const memberBalance = memberId ? this.memberBalances.get(memberId) : undefined;
@@ -471,6 +729,17 @@ class VoyagerService {
           if (memberId) {
             this.memberBalances.set(memberId, points);
             console.log(`[ACCOUNT-SUMMARY] Member balance set - memberId: ${memberId}, points: ${points}`);
+          }
+          
+          // Store point types for FEFO logic
+          if (summary.pointTypes && summary.pointTypes.length > 0) {
+            const session = await this.getSession(sessionId);
+            if (session) {
+              session.pointTypes = summary.pointTypes;
+              this.sessions.set(sessionId, session);
+              await this.storeSessionInKV(sessionId, session);
+              console.log(`[ACCOUNT-SUMMARY] Stored ${summary.pointTypes.length} point types for FEFO logic`);
+            }
           }
         } else {
           // Cannot provide a real balance
@@ -539,7 +808,7 @@ class VoyagerService {
       };
     }
 
-    const session = this.sessions.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) {
       return {
         success: false,
@@ -551,11 +820,33 @@ class VoyagerService {
     const sessionToken = session.sessionToken;
     const timestamp = new Date().toISOString();
 
+    // Use FEFO logic to select which point type to deduct from
+    let selectedPointType = null;
+    if (session.pointTypes && session.pointTypes.length > 0) {
+      const selected = this.selectPointTypeForDeduction(session.pointTypes, points);
+      if (selected) {
+        selectedPointType = selected.pointType;
+        log('[ISSUE-CERT] FEFO selected point type:', {
+          pointType: selected.pointType,
+          availablePoints: selected.points,
+          expiryDate: selected.expiryDate,
+          pointsToDeduct: points
+        });
+      } else {
+        log('[ISSUE-CERT] FEFO: No suitable point type found or insufficient balance');
+        return {
+          success: false,
+          message: 'Insufficient points in point types with expiry dates'
+        };
+      }
+    }
+
     log('[ISSUE-CERT] Starting certificate issuance', { 
       sessionId, 
       memberId, 
       points, 
       orderId,
+      selectedPointType,
       hasSessionToken: !!sessionToken 
     });
 
@@ -1081,25 +1372,36 @@ class VoyagerService {
           xmlResponse.includes('<success>true</success>') || 
           xmlResponse.includes('<success>1</success>')) {
         
-        // Extract transaction ID as session token
+        // Extract transaction token and transaction ID (matching test.js)
         let sessionToken = null;
+        let transactionId = null;
+        const tokenMatch = xmlResponse.match(/<transactionToken[^>]*>(.*?)<\/transactionToken>/);
         const transactionMatch = xmlResponse.match(/<transactionID[^>]*>([^<]+)<\/transactionID>/);
+        if (tokenMatch) {
+          sessionToken = tokenMatch[1].trim();
+        }
         if (transactionMatch) {
-          sessionToken = transactionMatch[1];
+          transactionId = transactionMatch[1].trim();
+        }
+        // Use transactionID as sessionToken if transactionToken is not available
+        if (!sessionToken && transactionId) {
+          sessionToken = transactionId;
         }
         
         // Extract membership number as member ID
+        // Note: The membership number might not be in the response, so we'll use the username parameter
         let memberId = null;
         const membershipMatch = xmlResponse.match(/<membershipNumber[^>]*>([^<]+)<\/membershipNumber>/);
         if (membershipMatch) {
-          memberId = membershipMatch[1];
+          memberId = membershipMatch[1].trim();
         }
         
-        if (sessionToken) {
+        if (sessionToken || transactionId) {
           return {
             success: true,
-            sessionToken,
-            memberId: memberId || 'unknown'
+            sessionToken: sessionToken || transactionId,
+            transactionId: transactionId || sessionToken,
+            memberId: memberId // Will be set from username parameter if not in response
           };
         } else {
           return {
@@ -1144,48 +1446,153 @@ class VoyagerService {
     try {
       log('[SOAP-PARSE] Parsing account summary response, length:', xmlResponse.length);
       
-      if (xmlResponse.includes('<fault>') || xmlResponse.includes('<soap:Fault>') || xmlResponse.includes('<soapenv:Fault>')) {
+      const trimmedResponse = xmlResponse.trimStart();
+      
+      // Check for SOAP faults first
+      if (trimmedResponse.includes('<fault>') || trimmedResponse.includes('<soap:Fault>') || trimmedResponse.includes('<soapenv:Fault>')) {
         let errorMessage = 'SOAP fault occurred';
         let errorCode = 'unknown';
-        const faultStringMatch = xmlResponse.match(/<faultstring[^>]*>([^<]+)<\/faultstring>/);
+        const faultStringMatch = trimmedResponse.match(/<faultstring[^>]*>([^<]+)<\/faultstring>/i);
         if (faultStringMatch) {
           errorMessage = faultStringMatch[1];
         }
-        const faultCodeMatch = xmlResponse.match(/<faultcode[^>]*>([^<]+)<\/faultcode>/);
+        const faultCodeMatch = trimmedResponse.match(/<faultcode[^>]*>([^<]+)<\/faultcode>/i);
         if (faultCodeMatch) {
           errorCode = faultCodeMatch[1];
         }
         log('[SOAP-PARSE] SOAP fault detected:', { errorMessage, errorCode });
         return { success: false, message: `${errorMessage} (${errorCode})` };
       }
-      if (xmlResponse.includes('<success>true</success>') || xmlResponse.includes('<success>1</success>')) {
-        let points = 0;
-        const totalPointsMatch = xmlResponse.match(/<totalPoints[^>]*>([^<]+)<\/totalPoints>/);
-        if (totalPointsMatch) {
-          points = parseInt(totalPointsMatch[1], 10) || 0;
-          log('[SOAP-PARSE] Found totalPoints:', { points, match: totalPointsMatch[1] });
-        } else {
-          const availableMatch = xmlResponse.match(/<availablePoints[^>]*>([^<]+)<\/availablePoints>/);
-          if (availableMatch) {
-            points = parseInt(availableMatch[1], 10) || 0;
-            log('[SOAP-PARSE] Found availablePoints:', { points, match: availableMatch[1] });
-          } else {
-            log('[SOAP-PARSE] No points field found in response');
+      
+      // Account summary response doesn't have <success> tags - it just has data
+      // Check if we have account data (membership number or point details)
+      const hasMembershipNumber = trimmedResponse.match(/<membershipNumber[^>]*>([^<]+)<\/membershipNumber>/i);
+      const hasPointDetails = trimmedResponse.match(/<pointDetails[^>]*>/i);
+      
+      if (!hasMembershipNumber && !hasPointDetails) {
+        log('[SOAP-PARSE] No account data found in response');
+        return { success: false, message: 'No account data found in response' };
+      }
+      
+      // Parse all point types with expiry dates for FEFO (First Expiry, First Out) logic
+      const pointTypesWithExpiry = new Map(); // Map<pointType, {points, expiryDate}>
+      let totalPoints = 0;
+      
+      // First, check pointDetails sections for points with expiry dates
+      const pointDetailsMatches = trimmedResponse.match(/<pointDetails[^>]*>([\s\S]*?)<\/pointDetails>/gi);
+      if (pointDetailsMatches && pointDetailsMatches.length > 0) {
+        for (const pointDetailSection of pointDetailsMatches) {
+          const pointTypeMatch = pointDetailSection.match(/<pointType[^>]*>(.*?)<\/pointType>/i);
+          const pointsMatch = pointDetailSection.match(/<points[^>]*>(.*?)<\/points>/i);
+          const expiryDateMatch = pointDetailSection.match(/<expiryDate[^>]*>(.*?)<\/expiryDate>/i);
+          
+          if (pointTypeMatch && pointsMatch) {
+            const pointType = pointTypeMatch[1].trim();
+            const pointValue = parseFloat(pointsMatch[1]) || 0;
+            const expiryDate = expiryDateMatch && expiryDateMatch[1].trim() && expiryDateMatch[1].trim() !== 'null' 
+              ? expiryDateMatch[1].trim() 
+              : null;
+            
+            // Store point type with expiry date
+            if (expiryDate) {
+              if (!pointTypesWithExpiry.has(pointType)) {
+                pointTypesWithExpiry.set(pointType, { points: 0, expiryDate });
+              }
+              pointTypesWithExpiry.get(pointType).points += pointValue;
+              totalPoints += pointValue;
+              log('[SOAP-PARSE] Added points with expiry:', { pointType, points: pointValue, expiryDate, runningTotal: totalPoints });
+            }
           }
         }
-        log('[SOAP-PARSE] Parsed points successfully:', { points, success: true });
-        return { success: true, points };
       }
-      if (xmlResponse.includes('<success>false</success>') || xmlResponse.includes('<success>0</success>')) {
-        let errorMessage = 'Failed to retrieve account summary';
-        const errorMatch = xmlResponse.match(/<message[^>]*>([^<]+)<\/message>/);
-        if (errorMatch) {
-          errorMessage = errorMatch[1];
+      
+      // Also check expiryDetails sections (separate section specifically for expiry info)
+      const expiryDetailsMatches = trimmedResponse.match(/<expiryDetails[^>]*>([\s\S]*?)<\/expiryDetails>/gi);
+      if (expiryDetailsMatches && expiryDetailsMatches.length > 0) {
+        for (const expiryDetailSection of expiryDetailsMatches) {
+          const pointTypeMatch = expiryDetailSection.match(/<pointType[^>]*>(.*?)<\/pointType>/i);
+          const pointsMatch = expiryDetailSection.match(/<points[^>]*>(.*?)<\/points>/i);
+          const expiryDateMatch = expiryDetailSection.match(/<expiryDate[^>]*>(.*?)<\/expiryDate>/i);
+          
+          if (pointTypeMatch && pointsMatch && expiryDateMatch) {
+            const pointType = pointTypeMatch[1].trim();
+            const pointValue = parseFloat(pointsMatch[1]) || 0;
+            const expiryDate = expiryDateMatch[1].trim();
+            
+            // Only add if we haven't already counted this point type from pointDetails
+            // (expiryDetails might duplicate pointDetails, so we dedupe by pointType)
+            if (expiryDate && expiryDate !== 'null') {
+              if (!pointTypesWithExpiry.has(pointType)) {
+                pointTypesWithExpiry.set(pointType, { points: 0, expiryDate });
+              }
+              // Use the expiry date from expiryDetails (more accurate)
+              pointTypesWithExpiry.get(pointType).expiryDate = expiryDate;
+              pointTypesWithExpiry.get(pointType).points += pointValue;
+              totalPoints += pointValue;
+              log('[SOAP-PARSE] Added points from expiryDetails:', { pointType, points: pointValue, expiryDate, runningTotal: totalPoints });
+            }
+          }
         }
-        log('[SOAP-PARSE] Success=false in response:', { errorMessage });
-        return { success: false, message: errorMessage };
       }
-      log('[SOAP-PARSE] Unable to parse response - no known success/failure indicators');
+      
+      let points = totalPoints;
+      
+      // If no points with expiry dates found, fall back to PURCH points only
+      if (points === 0) {
+        log('[SOAP-PARSE] No points with expiry dates found, falling back to PURCH points');
+        if (pointDetailsMatches && pointDetailsMatches.length > 0) {
+          for (const pointDetailSection of pointDetailsMatches) {
+            const pointTypeMatch = pointDetailSection.match(/<pointType[^>]*>(.*?)<\/pointType>/i);
+            const pointsMatch = pointDetailSection.match(/<points[^>]*>(.*?)<\/points>/i);
+            
+            if (pointTypeMatch && pointTypeMatch[1].trim() === 'PURCH' && pointsMatch) {
+              points = parseFloat(pointsMatch[1]) || 0;
+              log('[SOAP-PARSE] Found PURCH points (fallback):', { points, match: pointsMatch[1] });
+              break;
+            }
+          }
+        }
+      }
+      
+      // If still no points, try totalPoints
+      if (points === 0) {
+        const totalPointsMatch = trimmedResponse.match(/<totalPoints[^>]*>([^<]+)<\/totalPoints>/i);
+        if (totalPointsMatch) {
+          points = parseFloat(totalPointsMatch[1]) || 0;
+          log('[SOAP-PARSE] Found totalPoints (fallback):', { points, match: totalPointsMatch[1] });
+        }
+      }
+      
+      // If still no points, try availablePoints
+      if (points === 0) {
+        const availableMatch = trimmedResponse.match(/<availablePoints[^>]*>([^<]+)<\/availablePoints>/i);
+        if (availableMatch) {
+          points = parseFloat(availableMatch[1]) || 0;
+          log('[SOAP-PARSE] Found availablePoints (fallback):', { points, match: availableMatch[1] });
+        }
+      }
+      
+      // If we have account data (membership number or point details), consider it successful
+      // even if points is 0 (account might just have 0 points)
+      if (hasMembershipNumber || hasPointDetails) {
+        log('[SOAP-PARSE] Parsed account summary successfully:', { 
+          points, 
+          pointTypesCount: pointTypesWithExpiry.size,
+          hasMembershipNumber: !!hasMembershipNumber, 
+          hasPointDetails: !!hasPointDetails 
+        });
+        return { 
+          success: true, 
+          points,
+          pointTypes: Array.from(pointTypesWithExpiry.entries()).map(([type, data]) => ({
+            pointType: type,
+            points: data.points,
+            expiryDate: data.expiryDate
+          }))
+        };
+      }
+      
+      log('[SOAP-PARSE] Unable to parse response - no account data found');
       return { success: false, message: 'Unable to parse account summary response' };
     } catch (error) {
       log('[SOAP-PARSE] Parse error:', error);
@@ -1196,34 +1603,73 @@ class VoyagerService {
   async fetchAccountSummaryFromSOAP(sessionId) {
     try {
       log('[SOAP-FETCH] Starting SOAP account summary fetch:', { sessionId });
-      const session = this.sessions.get(sessionId);
+      
+      // Get session (tries memory, then KV, then reconstructs)
+      const session = await this.getSession(sessionId);
       if (!session) {
         log('[SOAP-FETCH] Session not found:', { sessionId });
         return { success: false, message: 'Invalid session' };
       }
       
+      // If session was reconstructed and missing tokens, we need to re-authenticate
+      if (!session.sessionToken && !session.transactionId) {
+        log('[SOAP-FETCH] Session missing tokens, cannot fetch account summary:', { sessionId, username: session.username });
+        return { success: false, message: 'Session expired. Please log in again.' };
+      }
+      
+      const memberId = session.memberId || session.username; // Use username as fallback
+      const transactionToken = session.sessionToken;
+      const transactionId = session.transactionId || session.sessionToken; // Use sessionToken as transactionId
+      
       log('[SOAP-FETCH] Session data:', { 
         sessionId, 
-        memberId: session.memberId, 
-        sessionToken: session.sessionToken ? 'present' : 'missing',
+        memberId, 
+        transactionToken: transactionToken ? 'present' : 'missing',
+        transactionId: transactionId ? 'present' : 'missing',
         username: session.username 
       });
       
+      // Build SOAP envelope matching test.js exactly (with WS-Security headers)
+      const created = '2050-12-31T10:33:52.303Z';
+      const nonceB64 = 'MTY4NjExNjA4MQ==';
+      const passwordDigestB64 = 'RxjWNeJegwDTtbGW0Q2FFBCnQ3A=';
+      
       const soapEnvelope = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="http://www.ibsplc.com/iloyal/member/accountsummary/v2.7/type/">
-  <soapenv:Header/>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:type="http://www.ibsplc.com/iloyal/member/accountsummary/type/">
+  <soapenv:Header>
+    <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+       <wsu:Timestamp wsu:Id="Timestamp-${Date.now()}" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+          <wsu:Created>${created}</wsu:Created>
+          <wsu:Expires>${created}</wsu:Expires>
+       </wsu:Timestamp>
+       <wsse:UsernameToken wsu:Id="UsernameToken-${Date.now()}" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+          <wsse:Username>wom</wsse:Username>
+          <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">${passwordDigestB64}</wsse:Password>
+          <wsse:Nonce>${nonceB64}</wsse:Nonce>
+          <wsu:Created>${created}</wsu:Created>
+       </wsse:UsernameToken>
+    </wsse:Security>
+  </soapenv:Header>
   <soapenv:Body>
-    <web:GetAccountSummary>
-      <web:sessionToken>${session.sessionToken}</web:sessionToken>
-      <web:memberId>${session.memberId}</web:memberId>
-    </web:GetAccountSummary>
+    <type:AccountSummaryRequest>
+      <companyCode>SA</companyCode>
+      <programCode>VOYAG</programCode>
+      <membershipNumber>${memberId}</membershipNumber>
+      <txnHeader>
+        <transactionID>${transactionId || ''}</transactionID>
+        <userName>wom</userName>
+        <transactionToken>${transactionToken || ''}</transactionToken>
+        <timeStamp>${new Date().toISOString()}</timeStamp>
+      </txnHeader>
+    </type:AccountSummaryRequest>
   </soapenv:Body>
 </soapenv:Envelope>`;
       
       log('[SOAP-FETCH] SOAP request:', { 
         url: this.accountUrl, 
-        sessionToken: session.sessionToken, 
-        memberId: session.memberId,
+        transactionToken: transactionToken ? 'present' : 'missing', 
+        transactionId: transactionId ? 'present' : 'missing',
+        memberId,
         envelopeLength: soapEnvelope.length 
       });
       
@@ -1231,9 +1677,15 @@ class VoyagerService {
         method: 'POST',
         headers: {
           'Content-Type': 'text/xml; charset=utf-8',
-          'SOAPAction': ''
+          'SOAPAction': '',
+          'Host': 'ilstage.flysaa.com' // Explicit Host header
         },
-        body: soapEnvelope
+        body: soapEnvelope,
+        cf: {
+          cacheTtl: 0,
+          cacheEverything: false,
+          resolveOverride: '196.46.23.82' // Direct IP from test.js
+        }
       });
       
       log('[SOAP-FETCH] SOAP response status:', { 
@@ -1313,12 +1765,19 @@ async function handleVoyagerAPI(request, path) {
         }
       });
     } else {
+      // Determine appropriate HTTP status based on error type
+      let statusCode = 401; // Default to unauthorized
+      if (result.errorCode === 'NETWORK_ERROR' || result.errorCode === 'SERVICE_UNAVAILABLE') {
+        statusCode = 503; // Service unavailable for network issues
+      }
+      
       return new Response(JSON.stringify({
         success: false,
         message: result.message || 'Authentication failed',
-        errorCode: result.errorCode || 'unknown'
+        errorCode: result.errorCode || 'unknown',
+        technicalDetails: result.technicalDetails
       }), {
-        status: 401,
+        status: statusCode,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders
@@ -1354,7 +1813,7 @@ async function handleVoyagerAPI(request, path) {
     
     // If SOAP fetch failed, try to return cached balance
     if (!result.success) {
-      const session = voyagerService.sessions.get(sessionId);
+      const session = await voyagerService.getSession(sessionId);
       const memberId = session?.memberId;
       const cachedBalance = voyagerService.sessionBalances.get(sessionId) || 
                            (memberId ? voyagerService.memberBalances.get(memberId) : null);
@@ -1424,7 +1883,7 @@ async function handleVoyagerAPI(request, path) {
       return new Response(JSON.stringify({ success: false, message: 'Invalid or expired session' }), { status: 401, headers: corsHeaders });
     }
 
-    let session = voyagerService.sessions.get(sessionId);
+    let session = await voyagerService.getSession(sessionId);
     let memberId = session?.memberId;
     
     // If session doesn't exist, try to find memberId by matching session balance with member balance
@@ -1438,12 +1897,14 @@ async function handleVoyagerAPI(request, path) {
           memberId = mid;
           console.log(`[APPLY] Found matching member balance - memberId: ${memberId}, balance: ${balance}`);
           // Recreate session entry for future use
-          voyagerService.sessions.set(sessionId, {
+          const sessionData = {
             sessionToken: null,
             memberId,
             username: memberId // Use memberId as username fallback
-          });
-          session = voyagerService.sessions.get(sessionId);
+          };
+          voyagerService.sessions.set(sessionId, sessionData);
+          await voyagerService.storeSessionInKV(sessionId, sessionData);
+          session = await voyagerService.getSession(sessionId);
           break;
         }
       }
@@ -1467,6 +1928,17 @@ async function handleVoyagerAPI(request, path) {
         if (memberId) {
           voyagerService.memberBalances.set(memberId, summary.points);
           console.log(`[APPLY] Member balance set from SOAP - memberId: ${memberId}, points: ${summary.points}`);
+        }
+        
+        // Store point types for FEFO logic
+        if (summary.pointTypes && summary.pointTypes.length > 0) {
+          const currentSession = await voyagerService.getSession(sessionId);
+          if (currentSession) {
+            currentSession.pointTypes = summary.pointTypes;
+            voyagerService.sessions.set(sessionId, currentSession);
+            await voyagerService.storeSessionInKV(sessionId, currentSession);
+            console.log(`[APPLY] Stored ${summary.pointTypes.length} point types for FEFO logic`);
+          }
         }
       } else {
         // If we have a memberId, use existing member balance; otherwise, cannot proceed
@@ -1613,7 +2085,7 @@ async function handleVoyagerAPI(request, path) {
     const markResult = await voyagerService.markCertificateAsUsed(sessionId, certificateResult.certificateId);
     
     // Get remaining balance after redemption
-    const finalSession = voyagerService.sessions.get(sessionId);
+    const finalSession = await voyagerService.getSession(sessionId);
     const finalMemberId = finalSession?.memberId;
     const remainingBalance = voyagerService.sessionBalances.get(sessionId) || 
                              (finalMemberId ? voyagerService.memberBalances.get(finalMemberId) : null);
