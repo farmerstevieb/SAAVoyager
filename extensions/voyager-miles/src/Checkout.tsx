@@ -12,6 +12,7 @@ import {
   useTranslate,
   useAttributes,
   useSubtotalAmount,
+  useTotalAmount,
 } from "@shopify/ui-extensions-react/checkout";
 import { useCallback, useState, useEffect } from "react";
 
@@ -27,6 +28,7 @@ function VoyagerMilesCheckout() {
   const applyAttributeChange = useApplyAttributeChange();
   const attributes = useAttributes();
   const subtotalAmount = useSubtotalAmount?.() as any;
+  const totalAmount = useTotalAmount?.() as any;
 
   const [userId, setUserId] = useState("");
   const [pin, setPin] = useState("");
@@ -103,25 +105,33 @@ function VoyagerMilesCheckout() {
       attributes?.find?.((a: any) => a?.key === "voyager_remaining_points")?.value || 0
     );
 
-    // If user logged in from cart, show points display
+    // If user logged in from cart, show points display (even if no points used yet)
     if (sessionId && totalPointsAttr > 0 && !approved) {
-      const remaining = remainingPointsAttr || Math.max(0, totalPointsAttr - prefilledPointsUsed);
-      const calculatedBalance = totalPointsAttr || remaining + prefilledPointsUsed;
+      // Calculate remaining points (available miles after discount)
+      const remaining = remainingPointsAttr > 0 
+        ? remainingPointsAttr 
+        : Math.max(0, totalPointsAttr - prefilledPointsUsed);
+      
+      // Use remaining points as available balance (what user can still use)
+      const availableBalance = remaining;
       const calculatedDiscount = prefilledPointsUsed * prefilledPointsRate;
       
       console.log("[Voyager Checkout] Existing session from cart detected", {
         sessionId,
-        remaining,
-        calculatedBalance,
+        totalPoints: totalPointsAttr,
+        pointsUsed: prefilledPointsUsed,
+        remainingPoints: remaining,
+        availableBalance,
         calculatedDiscount,
-        prefilledPointsUsed,
         prefilledPointsRate,
       });
       
       setApproved(true);
-      setPointsBalance(calculatedBalance);
+      // Set available balance (remaining points after discount)
+      setPointsBalance(availableBalance);
       setPointsToApply(prefilledPointsUsed);
-      setBalanceZar(calculatedBalance * prefilledPointsRate);
+      // Calculate ZAR value of remaining points
+      setBalanceZar(availableBalance * prefilledPointsRate);
       setDiscountZar(calculatedDiscount);
     }
   }, [attributes, pointsRate, approved]);
@@ -381,9 +391,42 @@ function VoyagerMilesCheckout() {
     }
   }, []);
 
-  // Calculate order total and total after miles
-  const orderTotal = subtotalAmount?.amount ? parseFloat(subtotalAmount.amount) / 100 : 0;
-  const totalAfterMiles = Math.max(0, orderTotal - discountZar);
+  // Get actual values directly from Shopify checkout hooks
+  // useSubtotalAmount() returns the subtotal BEFORE discounts (matches "Subtotal" in order summary)
+  // useTotalAmount() returns the final total AFTER all discounts and shipping (matches "Total" in order summary)
+  // Note: The amount property from Shopify hooks is already in decimal format (e.g., 10972 = R 10,972.00)
+  // We should NOT divide by 100 - the value is already in the correct format
+  const subtotalRaw = subtotalAmount?.amount;
+  const totalRaw = totalAmount?.amount;
+  
+  // Parse amounts directly - they're already in decimal format
+  const subtotalBeforeDiscount = subtotalRaw != null 
+    ? (typeof subtotalRaw === 'string' ? parseFloat(subtotalRaw) : Number(subtotalRaw))
+    : 0;
+  
+  const finalTotal = totalRaw != null
+    ? (typeof totalRaw === 'string' ? parseFloat(totalRaw) : Number(totalRaw))
+    : 0;
+  
+  // Order Total = Subtotal (before discount) - use directly from useSubtotalAmount()
+  const orderTotal = subtotalBeforeDiscount;
+  
+  // Total after applied Miles = Final Total (after discount) - use directly from useTotalAmount()
+  const totalAfterMiles = finalTotal;
+  
+  console.log("[Voyager Checkout] Order calculation (direct from Shopify hooks - no division)", {
+    subtotalAmount: subtotalAmount,
+    totalAmount: totalAmount,
+    subtotalRaw,
+    totalRaw,
+    subtotalBeforeDiscount,
+    finalTotal,
+    discountZar,
+    orderTotal,
+    totalAfterMiles,
+    pointsBalance,
+    pointsToApply
+  });
 
   return (
     <BlockStack spacing="base">
@@ -414,7 +457,6 @@ function VoyagerMilesCheckout() {
             label="Voyager Number"
             value={userId}
             onChange={setUserId}
-            placeholder="Enter your Voyager number"
             required
           />
 
@@ -422,7 +464,6 @@ function VoyagerMilesCheckout() {
             label="Pin"
             value={pin}
             onChange={setPin}
-            placeholder="Enter your PIN"
             required
           />
 
@@ -480,21 +521,21 @@ function VoyagerMilesCheckout() {
 
           {/* Points Info - Match cart extension layout */}
           <BlockStack spacing="tight">
-            <InlineStack spacing="base" blockAlignment="spaceBetween">
+            <InlineStack spacing="base">
               <Text>Available Miles:</Text>
               <Text emphasis="bold">{pointsBalance.toLocaleString()}</Text>
             </InlineStack>
-            <InlineStack spacing="base" blockAlignment="spaceBetween">
+            <InlineStack spacing="base">
               <Text>Value in ZAR:</Text>
               <Text emphasis="bold">R {balanceZar.toFixed(2)}</Text>
             </InlineStack>
-            <InlineStack spacing="base" blockAlignment="spaceBetween">
+            <InlineStack spacing="base">
               <Text>Order Total:</Text>
               <Text emphasis="bold">R {orderTotal.toFixed(2)}</Text>
             </InlineStack>
-            <InlineStack spacing="base" blockAlignment="spaceBetween">
+            <InlineStack spacing="base">
               <Text emphasis="bold">Total after applied Miles:</Text>
-              <Text emphasis="bold" size="large">R {totalAfterMiles.toFixed(2)}</Text>
+              <Text emphasis="bold">R {totalAfterMiles.toFixed(2)}</Text>
             </InlineStack>
           </BlockStack>
 
@@ -505,10 +546,9 @@ function VoyagerMilesCheckout() {
                 <Text size="small">Enter the Rand amount you would like to redeem</Text>
                 <BlockStack spacing="tight">
                   <TextField
-                    type="number"
+                    label=""
                     value={zarToApply}
                     onChange={setZarToApply}
-                    placeholder="R 100"
                   />
                   {zarToApply && (
                     <Text appearance="subdued" size="small">

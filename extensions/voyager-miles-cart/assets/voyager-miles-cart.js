@@ -136,6 +136,12 @@ class VoyagerMilesCart {
       zarInput.addEventListener("input", (e) => this.handleZarInput(e));
     }
 
+    // Logout button
+    const logoutBtn = document.getElementById("voyager-logout-btn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", () => this.handleLogout());
+    }
+
     // Fetch cart total on init
     this.fetchCartTotal();
   }
@@ -270,6 +276,95 @@ class VoyagerMilesCart {
     // Store points data for checkout integration
     localStorage.setItem("voyager_total_points", this.totalPoints.toString());
     localStorage.setItem("voyager_points_rate", this.pointsRate.toString());
+  }
+
+  async handleLogout() {
+    console.log("[Voyager] Logging out...");
+    
+    try {
+      // Clear all Voyager-related localStorage
+      localStorage.removeItem("voyager_session_id");
+      localStorage.removeItem("voyager_member_number");
+      localStorage.removeItem("voyager_total_points");
+      localStorage.removeItem("voyager_points_rate");
+      localStorage.removeItem("voyager_cart_session_id");
+      localStorage.removeItem("voyager_cart_member_number");
+
+      // Clear cart attributes
+      try {
+        await fetch("/cart/update.js", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            attributes: {
+              voyager_points_used: "",
+              voyager_points_rate: "",
+              voyager_session_id: "",
+              voyager_member_number: "",
+              voyager_total_points: "",
+              voyager_remaining_points: "",
+              voyager_discount_amount: "",
+              voyager_points_value: "",
+            },
+          }),
+        });
+        console.log("[Voyager] Cart attributes cleared");
+      } catch (error) {
+        console.error("[Voyager] Error clearing cart attributes:", error);
+      }
+
+      // Reset UI
+      this.totalPoints = 0;
+      this.cartTotal = 0;
+
+      // Hide points display and show login form
+      const pointsDisplay = document.getElementById("voyager-points-display");
+      const loginForm = document.getElementById("voyager-login-form");
+      
+      if (pointsDisplay) {
+        pointsDisplay.style.display = "none";
+      }
+      if (loginForm) {
+        loginForm.style.display = "block";
+        // Clear form fields
+        const usernameInput = document.getElementById("voyager-username");
+        const passwordInput = document.getElementById("voyager-password");
+        if (usernameInput) usernameInput.value = "";
+        if (passwordInput) passwordInput.value = "";
+      }
+
+      // Clear status messages
+      this.hideStatus();
+      this.clearPointsStatus();
+
+      // Reset total after miles
+      this.updateTotalAfterMiles(0);
+
+      // Clear ZAR input
+      const zarInput = document.getElementById("zar-to-use");
+      if (zarInput) {
+        zarInput.value = "";
+      }
+      const pointsDisplayElement = document.getElementById("zar-to-points-display");
+      if (pointsDisplayElement) {
+        pointsDisplayElement.textContent = "";
+      }
+
+      console.log("[Voyager] Logout successful");
+      this.showStatus("Logged out successfully", "success");
+      
+      // Hide status after 2 seconds
+      setTimeout(() => {
+        this.hideStatus();
+      }, 2000);
+
+    } catch (error) {
+      console.error("[Voyager] Error during logout:", error);
+      this.showStatus("Error during logout. Please try again.", "error");
+    }
   }
 
   async fetchCartTotal() {
