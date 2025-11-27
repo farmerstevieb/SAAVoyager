@@ -539,7 +539,7 @@ function VoyagerMilesCheckout() {
             </InlineStack>
           </BlockStack>
 
-          {/* ZAR Input for Partial Redemption - Match cart extension */}
+          {/* ZAR Input for Partial or Full Redemption - Match cart extension */}
           {pointsToApply === 0 && (
             <BlockStack spacing="base">
               <BlockStack spacing="tight">
@@ -573,61 +573,55 @@ function VoyagerMilesCheckout() {
                 <Button
                   kind="primary"
                   loading={loading}
-                  disabled={!zarToApply || parseFloat(zarToApply) <= 0 || parseFloat(zarToApply) > balanceZar}
-                  onPress={handleApplyZarDiscount}
+                  disabled={
+                    (zarToApply && (parseFloat(zarToApply) <= 0 || parseFloat(zarToApply) > balanceZar)) ||
+                    (!zarToApply && (orderTotal <= 0 || orderTotal > balanceZar))
+                  }
+                  onPress={async () => {
+                    setLoading(true);
+                    setError("");
+                    setMessage("");
+                    
+                    try {
+                      // If ZAR amount is entered, use it; otherwise apply full order amount
+                      const zarAmount = zarToApply ? parseFloat(zarToApply) : orderTotal;
+                      const pointsNeeded = Math.ceil(zarAmount / effectivePointsRate);
+                      const discountAmount = pointsNeeded * effectivePointsRate;
+                      const remainingPoints = pointsBalance - pointsNeeded;
+                      
+                      // Get session ID from attributes
+                      const sessionIdAttr = attributes?.find?.((a: any) => a?.key === "voyager_session_id");
+                      const sessionId = sessionIdAttr?.value || "";
+                      
+                      if (!sessionId) {
+                        setError("Session ID not found. Please log in again.");
+                        setLoading(false);
+                        return;
+                      }
+                      
+                      await setAttribute("voyager_points_used", pointsNeeded.toString());
+                      await setAttribute("voyager_points_rate", effectivePointsRate.toString());
+                      await setAttribute("voyager_remaining_points", remainingPoints.toString());
+                      await setAttribute("voyager_discount_amount", discountAmount.toFixed(2));
+                      await setAttribute("voyager_points_value", discountAmount.toString());
+                      await setAttribute("voyager_session_id", sessionId);
+                      await setAttribute("voyager_total_points", pointsBalance.toString());
+                      
+                      setPointsToApply(pointsNeeded);
+                      setDiscountZar(discountAmount);
+                      setZarToApply(""); // Clear input after applying
+                      setMessage("Voyager Miles applied successfully!");
+                    } catch (e: any) {
+                      setError(e.message || "Failed to apply Voyager Miles.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
                 >
                   APPLY MILES
                 </Button>
               </InlineStack>
             </BlockStack>
-          )}
-
-          {/* Apply Full Order Amount Button */}
-          {pointsToApply === 0 && (
-            <Button
-              kind="primary"
-              loading={loading}
-              disabled={orderTotal <= 0 || orderTotal > balanceZar}
-              onPress={async () => {
-                setLoading(true);
-                setError("");
-                setMessage("");
-                
-                try {
-                  const pointsNeeded = Math.ceil(orderTotal / effectivePointsRate);
-                  const discountAmount = pointsNeeded * effectivePointsRate;
-                  const remainingPoints = pointsBalance - pointsNeeded;
-                  
-                  // Get session ID from attributes
-                  const sessionIdAttr = attributes?.find?.((a: any) => a?.key === "voyager_session_id");
-                  const sessionId = sessionIdAttr?.value || "";
-                  
-                  if (!sessionId) {
-                    setError("Session ID not found. Please log in again.");
-                    setLoading(false);
-                    return;
-                  }
-                  
-                  await setAttribute("voyager_points_used", pointsNeeded.toString());
-                  await setAttribute("voyager_points_rate", effectivePointsRate.toString());
-                  await setAttribute("voyager_remaining_points", remainingPoints.toString());
-                  await setAttribute("voyager_discount_amount", discountAmount.toFixed(2));
-                  await setAttribute("voyager_points_value", discountAmount.toString());
-                  await setAttribute("voyager_session_id", sessionId);
-                  await setAttribute("voyager_total_points", pointsBalance.toString());
-                  
-                  setPointsToApply(pointsNeeded);
-                  setDiscountZar(discountAmount);
-                  setMessage("Voyager Miles applied successfully!");
-                } catch (e: any) {
-                  setError(e.message || "Failed to apply Voyager Miles.");
-                } finally {
-                  setLoading(false);
-                }
-              }}
-            >
-              APPLY MILES
-            </Button>
           )}
 
           {/* Applied Points Success Message with Remove Button */}
