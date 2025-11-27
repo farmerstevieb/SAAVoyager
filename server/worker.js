@@ -2174,9 +2174,23 @@ async function handleWebhooks(request, path) {
         const pointsRate = parseFloat(voyagerRate.value);
         const sessionId = voyagerSession.value;
         
-        log('Finalizing Voyager points for order:', { orderId, pointsUsed, pointsRate, sessionId });
+        log('[WEBHOOK] Finalizing Voyager points for order:', { orderId, pointsUsed, pointsRate, sessionId });
         
-        // Finalize points deduction
+        // Refresh account summary to get latest point types for FEFO logic
+        // This ensures we have the most up-to-date point types before deduction
+        const session = await voyagerService.getSession(sessionId);
+        if (session && (!session.pointTypes || session.pointTypes.length === 0)) {
+          log('[WEBHOOK] No point types in session, fetching account summary for FEFO logic');
+          const summary = await voyagerService.fetchAccountSummaryFromSOAP(sessionId);
+          if (summary.success && summary.pointTypes) {
+            session.pointTypes = summary.pointTypes;
+            voyagerService.sessions.set(sessionId, session);
+            await voyagerService.storeSessionInKV(sessionId, session);
+            log('[WEBHOOK] Refreshed point types for FEFO:', { count: summary.pointTypes.length });
+          }
+        }
+        
+        // Finalize points deduction (uses FEFO logic internally)
         const finalizeResult = await voyagerService.issueCertificate(sessionId, pointsUsed, orderId);
         
         if (finalizeResult.success) {
