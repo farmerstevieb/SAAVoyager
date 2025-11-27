@@ -86,8 +86,10 @@ function VoyagerMilesCheckout() {
     fetchConversionRate();
   }, []);
 
-  // Check for prefilled points from cart attributes (when discount already applied)
+  // Check for existing session from cart extension (via attributes)
   useEffect(() => {
+    const sessionIdAttr = attributes?.find?.((a: any) => a?.key === "voyager_session_id");
+    const sessionId = sessionIdAttr?.value || "";
     const prefilledPointsUsed = Number(
       attributes?.find?.((a: any) => a?.key === "voyager_points_used")?.value || 0
     );
@@ -101,13 +103,14 @@ function VoyagerMilesCheckout() {
       attributes?.find?.((a: any) => a?.key === "voyager_remaining_points")?.value || 0
     );
 
-    if (prefilledPointsUsed > 0 && !approved) {
-      // Show applied state using attributes (discount already applied from cart)
+    // If user logged in from cart, show points display
+    if (sessionId && totalPointsAttr > 0 && !approved) {
       const remaining = remainingPointsAttr || Math.max(0, totalPointsAttr - prefilledPointsUsed);
       const calculatedBalance = totalPointsAttr || remaining + prefilledPointsUsed;
       const calculatedDiscount = prefilledPointsUsed * prefilledPointsRate;
       
-      console.log("[Voyager Checkout] Prefilled points detected, applying state", {
+      console.log("[Voyager Checkout] Existing session from cart detected", {
+        sessionId,
         remaining,
         calculatedBalance,
         calculatedDiscount,
@@ -384,75 +387,98 @@ function VoyagerMilesCheckout() {
 
   return (
     <BlockStack spacing="base">
-      {/* Header - Match design */}
+      {/* Header - Match cart extension design */}
       <BlockStack spacing="tight">
         <Text emphasis="bold" size="large">
-          Pay With SAA Voyager Miles
-        </Text>
-        <Text appearance="subdued" size="small">
-          To pay the full amount using SAA Miles, select Apply Miles.
+          PAY WITH SAA VOYAGER MILES
         </Text>
       </BlockStack>
 
       {!approved ? (
-        /* Login Form - Match design */
+        /* Login Form - Match cart extension design */
         <BlockStack spacing="base">
+          {/* Login Header with Icon */}
+          <BlockStack spacing="tight">
+            <InlineStack spacing="tight" blockAlignment="center">
+              <Text size="large">✈️</Text>
+              <Text emphasis="bold" size="large">
+                SAA Voyager Miles
+              </Text>
+            </InlineStack>
+            <Text appearance="subdued" size="small">
+              Log in securely to view your balance and apply Miles to this purchase
+            </Text>
+          </BlockStack>
+
           <TextField
             label="Voyager Number"
             value={userId}
             onChange={setUserId}
-            placeholder="Voyager Number"
+            placeholder="Enter your Voyager number"
             required
           />
 
           <TextField
-            label="PIN"
+            label="Pin"
             value={pin}
             onChange={setPin}
-            placeholder="PIN"
+            placeholder="Enter your PIN"
             required
           />
 
-          {/* Split Payments Info Box */}
-          <Banner status="info">
-            <InlineStack spacing="tight" blockAlignment="center">
-              <Text>✈️</Text>
-              <Text size="small">
-                For split payments (SAA and other methods), please return to your{" "}
-                <Text emphasis="bold">cart.</Text>
-              </Text>
-            </InlineStack>
-          </Banner>
+          {/* Button Group - Match cart extension */}
+          <InlineStack spacing="base">
+            <Button
+              kind="secondary"
+              onPress={() => {
+                setUserId("");
+                setPin("");
+                setError("");
+                setMessage("");
+              }}
+            >
+              CANCEL
+            </Button>
+            <Button
+              kind="primary"
+              loading={loading}
+              disabled={!userId || !pin}
+              onPress={handleCheckAndApply}
+            >
+              LOGIN & CHECK MILES
+            </Button>
+          </InlineStack>
 
-          <Button
-            kind="primary"
-            loading={loading}
-            disabled={!userId || !pin}
-            onPress={handleCheckAndApply}
-          >
-            Apply Voyager Miles
-          </Button>
+          {/* Disclaimer - Match cart extension */}
+          <Text appearance="subdued" size="small">
+            *If you'd like to pay for your full order and delivery using Voyager Miles, you can do so on the final payment page.
+          </Text>
 
           {error && (
             <Banner status="critical">
               <Text size="small">{error}</Text>
             </Banner>
           )}
+          {message && (
+            <Banner status="info">
+              <Text size="small">{message}</Text>
+            </Banner>
+          )}
         </BlockStack>
       ) : (
-        /* Points Display - Match design */
+        /* Points Display - Match cart extension design */
         <BlockStack spacing="base">
-          {/* Header */}
+          {/* Points Header with Icon */}
           <BlockStack spacing="tight">
-            <Text emphasis="bold" size="large">
-              SAA Voyager Miles
-            </Text>
-            <Text appearance="subdued" size="small">
-              To pay the full amount using SAA Miles, select Apply Voyager Miles.
-            </Text>
+            <InlineStack spacing="tight" blockAlignment="center">
+              <Text size="large">✈️</Text>
+              <Text emphasis="bold" size="large">
+                SAA Voyager Miles
+              </Text>
+            </InlineStack>
           </BlockStack>
 
-          {/* Points Info - Match design layout */}
+          {/* Points Info - Match cart extension layout */}
           <BlockStack spacing="tight">
             <InlineStack spacing="base" blockAlignment="spaceBetween">
               <Text>Available Miles:</Text>
@@ -466,28 +492,57 @@ function VoyagerMilesCheckout() {
               <Text>Order Total:</Text>
               <Text emphasis="bold">R {orderTotal.toFixed(2)}</Text>
             </InlineStack>
-            {/* Divider line effect */}
-            <BlockStack spacing="tight">
-              <Text size="small" appearance="subdued">─────────────</Text>
-            </BlockStack>
             <InlineStack spacing="base" blockAlignment="spaceBetween">
               <Text emphasis="bold">Total after applied Miles:</Text>
               <Text emphasis="bold" size="large">R {totalAfterMiles.toFixed(2)}</Text>
             </InlineStack>
           </BlockStack>
 
-          {/* Split Payments Info Box */}
-          <Banner status="info">
-            <InlineStack spacing="tight" blockAlignment="center">
-              <Text>✈️</Text>
-              <Text size="small">
-                For split payments (SAA and other methods), please return to your{" "}
-                <Text emphasis="bold">cart.</Text>
-              </Text>
-            </InlineStack>
-          </Banner>
+          {/* ZAR Input for Partial Redemption - Match cart extension */}
+          {pointsToApply === 0 && (
+            <BlockStack spacing="base">
+              <BlockStack spacing="tight">
+                <Text size="small">Enter the Rand amount you would like to redeem</Text>
+                <BlockStack spacing="tight">
+                  <TextField
+                    type="number"
+                    value={zarToApply}
+                    onChange={setZarToApply}
+                    placeholder="R 100"
+                  />
+                  {zarToApply && (
+                    <Text appearance="subdued" size="small">
+                      = {Math.ceil(parseFloat(zarToApply) / effectivePointsRate).toLocaleString()} points
+                    </Text>
+                  )}
+                </BlockStack>
+              </BlockStack>
 
-          {/* Apply Miles Button - Apply Full Amount */}
+              {/* Button Group - Match cart extension */}
+              <InlineStack spacing="base">
+                <Button
+                  kind="secondary"
+                  onPress={() => {
+                    setZarToApply("");
+                    setError("");
+                    setMessage("");
+                  }}
+                >
+                  CANCEL
+                </Button>
+                <Button
+                  kind="primary"
+                  loading={loading}
+                  disabled={!zarToApply || parseFloat(zarToApply) <= 0 || parseFloat(zarToApply) > balanceZar}
+                  onPress={handleApplyZarDiscount}
+                >
+                  APPLY MILES
+                </Button>
+              </InlineStack>
+            </BlockStack>
+          )}
+
+          {/* Apply Full Order Amount Button */}
           {pointsToApply === 0 && (
             <Button
               kind="primary"
@@ -531,13 +586,12 @@ function VoyagerMilesCheckout() {
                 }
               }}
             >
-              Apply Voyager Miles
+              APPLY MILES
             </Button>
           )}
-          
+
           {/* Applied Points Success Message */}
           {pointsToApply > 0 && (
-            /* Applied Points Success Message */
             <Banner status="success">
               <InlineStack spacing="tight" blockAlignment="center">
                 <Text>✈️</Text>
@@ -546,8 +600,13 @@ function VoyagerMilesCheckout() {
             </Banner>
           )}
 
-          {message && (
-            <Banner status="success">
+          {/* Disclaimer - Match cart extension */}
+          <Text appearance="subdued" size="small">
+            *If you'd like to pay for your full order and delivery using Voyager Miles, you can do so on the final payment page.
+          </Text>
+
+          {message && pointsToApply === 0 && (
+            <Banner status="info">
               <Text size="small">{message}</Text>
             </Banner>
           )}
