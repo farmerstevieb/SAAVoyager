@@ -17,7 +17,7 @@ import {
 import { useCallback, useState, useEffect } from "react";
 
 // Checkout UI Extension for Voyager Miles integration
-export default reactExtension("purchase.checkout.payment-method-list.render-before", () => (
+export default reactExtension("purchase.checkout.payment-method-list.render-after", () => (
   <VoyagerMilesCheckout />
 ));
 
@@ -204,7 +204,7 @@ function VoyagerMilesCheckout() {
 
       if (!authResponse.ok) {
         if (authResponse.status === 401) {
-          throw new Error("Invalid Voyager credentials. Please use: Voyager Number: 500365586, PIN: 2222");
+          throw new Error("Invalid Voyager credentials. Please use correct account credentials");
         }
         throw new Error(`Authentication failed: ${authResponse.status}`);
       }
@@ -630,14 +630,45 @@ function VoyagerMilesCheckout() {
             </Button>
           )}
 
-          {/* Applied Points Success Message */}
+          {/* Applied Points Success Message with Remove Button */}
           {pointsToApply > 0 && (
-            <Banner status="success">
-              <InlineStack spacing="tight" blockAlignment="center">
-                <Text>✈️</Text>
-                <Text emphasis="bold">Voyager Miles Applied Successfully</Text>
-              </InlineStack>
-            </Banner>
+            <BlockStack spacing="base">
+              <Banner status="success">
+                <InlineStack spacing="tight" blockAlignment="center">
+                  <Text>✈️</Text>
+                  <Text emphasis="bold">Voyager Miles Applied Successfully</Text>
+                </InlineStack>
+              </Banner>
+              <Button
+                kind="secondary"
+                onPress={async () => {
+                  setLoading(true);
+                  setError("");
+                  setMessage("");
+                  
+                  try {
+                    // Clear all Voyager discount attributes
+                    await setAttribute("voyager_points_used", "0");
+                    await setAttribute("voyager_discount_amount", "0");
+                    await setAttribute("voyager_points_value", "0");
+                    await setAttribute("voyager_remaining_points", pointsBalance.toString());
+                    
+                    // Reset state
+                    setPointsToApply(0);
+                    setDiscountZar(0);
+                    setMessage("Discount removed successfully");
+                    
+                    console.log("[Voyager Checkout] ✅ Discount removed");
+                  } catch (e: any) {
+                    setError(e.message || "Failed to remove discount.");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                REMOVE DISCOUNT
+              </Button>
+            </BlockStack>
           )}
 
           {/* Disclaimer - Match cart extension */}

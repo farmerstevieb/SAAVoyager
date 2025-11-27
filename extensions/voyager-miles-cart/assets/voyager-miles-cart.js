@@ -123,6 +123,9 @@ class VoyagerMilesCart {
         this.updateTotalAfterMiles(0);
       });
     }
+    
+    // Check if discount is already applied and show remove button
+    this.checkAndShowRemoveDiscountButton();
 
     // Tab navigation - removed click handlers (tabs are display-only)
 
@@ -671,13 +674,27 @@ class VoyagerMilesCart {
 
     const promptDiv = document.createElement("div");
     promptDiv.className = "checkout-prompt";
+    const pointsUsed = localStorage.getItem("voyager_points_used") || "0";
+    const discountAmount = localStorage.getItem("voyager_points_value") || "0";
+    
     promptDiv.innerHTML = `
-      <div style="background:rgb(255, 255, 255); border-radius: 8px;">
+      <div style="background:rgb(240, 253, 244); border: 1px solid rgb(34, 197, 94); border-radius: 8px; padding: 12px; margin-top: 12px;">
         <p style="margin: 0 0 12px 0; color:rgb(0, 0, 0); font-weight: 500;">
-   Discount applied successfully! Proceed to checkout to complete your order.
-        </p>  
+          ✈️ Voyager Miles Applied Successfully! Discount: R ${parseFloat(discountAmount).toFixed(2)} (${parseInt(pointsUsed).toLocaleString()} points)
+        </p>
+        <button type="button" id="remove-discount-btn" class="voyager-remove-discount-btn" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+          REMOVE DISCOUNT
+        </button>
       </div>
     `;
+    
+    // Add event listener for remove discount button
+    setTimeout(() => {
+      const removeBtn = document.getElementById("remove-discount-btn");
+      if (removeBtn) {
+        removeBtn.addEventListener("click", () => this.handleRemoveDiscount());
+      }
+    }, 100);
 
     // Append to pointsStatusDiv, but don't let showPointsStatus clear it
     this.pointsStatusDiv.appendChild(promptDiv);
@@ -727,6 +744,75 @@ class VoyagerMilesCart {
       }
       this.showPointsDisplay();
       this.fetchAccountSummary();
+      
+      // Check if discount is already applied
+      this.checkAndShowRemoveDiscountButton();
+    }
+  }
+  
+  checkAndShowRemoveDiscountButton() {
+    const pointsUsed = localStorage.getItem("voyager_points_used");
+    if (pointsUsed && parseInt(pointsUsed) > 0) {
+      // Discount is applied, show remove button if not already shown
+      const existingPrompt = this.pointsStatusDiv?.querySelector(".checkout-prompt");
+      if (!existingPrompt) {
+        this.showCheckoutPrompt();
+      }
+    }
+  }
+  
+  async handleRemoveDiscount() {
+    console.log("[Voyager] Removing applied discount...");
+    
+    try {
+      // Clear cart attributes to remove discount
+      await fetch("/cart/update.js", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          attributes: {
+            voyager_points_used: "",
+            voyager_points_rate: "",
+            voyager_session_id: "",
+            voyager_member_number: "",
+            voyager_total_points: "",
+            voyager_remaining_points: "",
+            voyager_discount_amount: "",
+            voyager_points_value: "",
+          },
+        }),
+      });
+      
+      // Clear localStorage
+      localStorage.removeItem("voyager_points_used");
+      localStorage.removeItem("voyager_points_value");
+      localStorage.removeItem("voyager_remaining_points");
+      
+      // Update UI
+      this.updateTotalAfterMiles(0);
+      this.clearPointsStatus();
+      
+      // Remove checkout prompt
+      const existingPrompt = this.pointsStatusDiv?.querySelector(".checkout-prompt");
+      if (existingPrompt) {
+        existingPrompt.remove();
+      }
+      
+      // Refresh points display to show original balance
+      const sessionId = localStorage.getItem("voyager_session_id");
+      if (sessionId) {
+        await this.fetchAccountSummary();
+      }
+      
+      this.showPointsStatus("Discount removed successfully", "success");
+      console.log("[Voyager] Discount removed successfully");
+      
+    } catch (error) {
+      console.error("[Voyager] Error removing discount:", error);
+      this.showPointsStatus("Failed to remove discount. Please try again.", "error");
     }
   }
 

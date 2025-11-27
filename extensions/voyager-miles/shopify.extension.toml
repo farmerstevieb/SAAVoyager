@@ -17,7 +17,7 @@ type = "ui_extension"
 
 [[extensions.targeting]]
 module = "./src/Checkout.tsx"
-target = "purchase.checkout.payment-method-list.render-before"
+target = "purchase.checkout.payment-method-list.render-after"
 
 
 [extensions.capabilities]
