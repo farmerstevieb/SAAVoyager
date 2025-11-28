@@ -832,14 +832,24 @@ class VoyagerMilesCart {
       const isVisible = milesSection.style.display !== "none";
       milesSection.style.display = isVisible ? "none" : "block";
 
-      // If showing, hide points display and show login form
+      // If showing, check if user is already logged in
       if (!isVisible) {
-        if (this.loginForm) this.loginForm.style.display = "block";
-        if (this.pointsDisplay) this.pointsDisplay.style.display = "none";
-        // Reset form
-        if (this.loginForm) {
-          this.loginForm.reset();
-          this.hideStatus();
+        const sessionId = localStorage.getItem("voyager_session_id");
+        
+        if (sessionId) {
+          // User is logged in, show points display
+          this.showPointsDisplay();
+          // Refresh account summary to ensure data is up to date
+          this.fetchAccountSummary();
+        } else {
+          // User is not logged in, show login form
+          if (this.loginForm) this.loginForm.style.display = "block";
+          if (this.pointsDisplay) this.pointsDisplay.style.display = "none";
+          // Reset form
+          if (this.loginForm) {
+            this.loginForm.reset();
+            this.hideStatus();
+          }
         }
       }
     }
