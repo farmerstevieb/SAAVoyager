@@ -42,7 +42,7 @@ class VoyagerMilesCart {
 
     this.bindEvents();
     this.checkExistingSession();
-    this.moveAboveCheckoutButton();
+    this.moveAboveSubtotal();
   }
 
   async fetchConversionRate() {
@@ -678,9 +678,9 @@ class VoyagerMilesCart {
     const discountAmount = localStorage.getItem("voyager_points_value") || "0";
     
     promptDiv.innerHTML = `
-      <div style="background:rgb(240, 253, 244); border: 1px solid rgb(34, 197, 94); border-radius: 8px; padding: 12px; margin-top: 12px;">
+      <div style="background:rgb(255, 255, 255); border: 1px solid rgb(121, 121, 121); border-radius: 8px; padding: 12px; margin-top: 12px;">
         <p style="margin: 0 0 12px 0; color:rgb(0, 0, 0); font-weight: 500;">
-          ✈️ Voyager Miles Applied Successfully! Discount: R ${parseFloat(discountAmount).toFixed(2)} (${parseInt(pointsUsed).toLocaleString()} points)
+          Voyager Miles Applied Successfully!
         </p>
         <button type="button" id="remove-discount-btn" class="voyager-remove-discount-btn" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
           REMOVE DISCOUNT
@@ -1197,6 +1197,161 @@ class VoyagerMilesCart {
       console.log("[Voyager] MutationObserver disconnected");
     }, 10000);
   }
+
+  moveAboveSubtotal() {
+    if (!this.block) {
+      console.log("[Voyager] Block not found, cannot move");
+      return;
+    }
+
+    // Wait for block to be in the DOM
+    if (!this.block.parentElement) {
+      console.log("[Voyager] Block not in DOM yet, will retry...");
+      setTimeout(() => this.moveAboveSubtotal(), 200);
+      return;
+    }
+
+    console.log("[Voyager] Attempting to move block above subtotal (as sibling, not inside)...");
+
+    const tryMove = () => {
+      // Common selectors for subtotal sections - these should be the containers, not inner elements
+      const subtotalSelectors = [
+        '.cart__subtotal',
+        '.cart-subtotal',
+        '.cart__total',
+        '.cart-total',
+        '.cart-summary',
+        '.cart__summary',
+        '.cart-totals',
+        '.cart__totals',
+        '.totals', // Common Shopify class
+        '[class*="subtotal"]',
+        '[id*="subtotal"]',
+        '[id*="cart-total"]',
+        '[class*="cart-total"]',
+        '.cart__footer',
+        '.cart-footer',
+        '.cart-drawer__footer',
+        '.cart-drawer__summary',
+        'form[action*="/cart"] .cart__footer',
+        'form[action*="/cart"] .cart__summary',
+      ];
+
+      let subtotalSection = null;
+
+      // Try to find subtotal section
+      for (const selector of subtotalSelectors) {
+        try {
+          const elements = document.querySelectorAll(selector);
+          for (const element of elements) {
+            // Check if this element contains subtotal-related text or price
+            const text = element.textContent?.toLowerCase() || '';
+            const hasSubtotal = text.includes('subtotal') || 
+                              (text.includes('total') && !text.includes('voyager')) || 
+                              element.querySelector('[class*="price"]') ||
+                              element.querySelector('[class*="money"]') ||
+                              element.querySelector('[data-cart-total]');
+            
+            // Make sure it's not our block or inside our block
+            if (hasSubtotal && element.offsetParent !== null && 
+                !element.contains(this.block) && 
+                element !== this.block) {
+              subtotalSection = element;
+              console.log("[Voyager] Found subtotal section:", selector, element);
+              break;
+            }
+          }
+          if (subtotalSection) break;
+        } catch (e) {
+          console.log("[Voyager] Selector failed:", selector, e);
+        }
+      }
+
+      if (!subtotalSection) {
+        console.log("[Voyager] Subtotal section not found");
+        return false;
+      }
+
+      // Get the parent of the subtotal section - this is where we want to insert
+      const subtotalParent = subtotalSection.parentElement;
+      
+      if (!subtotalParent) {
+        console.log("[Voyager] Subtotal section has no parent");
+        return false;
+      }
+
+      // Make sure we're not already inside the subtotal section
+      if (subtotalSection.contains(this.block)) {
+        console.log("[Voyager] ⚠️ Block is inside subtotal section, removing it first");
+        this.block.parentElement.removeChild(this.block);
+      }
+
+      // Check if already in correct position (as sibling, before subtotal)
+      if (subtotalParent.contains(this.block)) {
+        const children = Array.from(subtotalParent.children);
+        const blockIndex = children.indexOf(this.block);
+        const subtotalIndex = children.indexOf(subtotalSection);
+
+        if (blockIndex !== -1 && subtotalIndex !== -1 && blockIndex < subtotalIndex) {
+          console.log("[Voyager] ✅ Block already above subtotal as sibling");
+          return true;
+        }
+      }
+
+      // Remove block from current position if it's in a different parent
+      if (this.block.parentElement && this.block.parentElement !== subtotalParent) {
+        this.block.parentElement.removeChild(this.block);
+        console.log("[Voyager] Removed block from old parent");
+      }
+
+      // Insert the block as a sibling BEFORE the subtotal section (not inside it)
+      try {
+        subtotalParent.insertBefore(this.block, subtotalSection);
+        console.log("[Voyager] ✅ Successfully moved Voyager block above subtotal as sibling");
+        return true;
+      } catch (error) {
+        console.error("[Voyager] ❌ Error moving block:", error);
+        return false;
+      }
+    };
+
+    // Try immediately
+    if (tryMove()) {
+      return;
+    }
+
+    // If not found, wait a bit and try again (for dynamic content)
+    setTimeout(() => {
+      if (!tryMove()) {
+        console.log("[Voyager] ⚠️ Subtotal section not found after retry");
+        // Try one more time with a longer delay
+        setTimeout(() => {
+          if (!tryMove()) {
+            console.log("[Voyager] ⚠️ Subtotal section not found after final retry, keeping default position");
+          }
+        }, 1000);
+      }
+    }, 500);
+
+    // Also observe DOM changes for cart drawers that load dynamically
+    const observer = new MutationObserver(() => {
+      if (tryMove()) {
+        observer.disconnect();
+        console.log("[Voyager] ✅ Moved above subtotal via MutationObserver");
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Disconnect observer after 10 seconds to avoid memory leaks
+    setTimeout(() => {
+      observer.disconnect();
+      console.log("[Voyager] MutationObserver disconnected");
+    }, 10000);
+  }
 }
 
 // Initialize when DOM is ready
@@ -1218,7 +1373,7 @@ window.addEventListener("load", () => {
   const existingInstance = window.voyagerMilesCartInstance;
   if (existingInstance && existingInstance.moveAboveCheckoutButton) {
     setTimeout(() => {
-      existingInstance.moveAboveCheckoutButton();
+      existingInstance.moveAboveSubtotal();
     }, 500);
   }
 });

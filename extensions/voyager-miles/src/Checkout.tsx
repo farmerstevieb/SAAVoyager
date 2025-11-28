@@ -13,6 +13,7 @@ import {
   useAttributes,
   useSubtotalAmount,
   useTotalAmount,
+  useBuyerJourneyIntercept,
 } from "@shopify/ui-extensions-react/checkout";
 import { useCallback, useState, useEffect } from "react";
 
@@ -88,10 +89,82 @@ function VoyagerMilesCheckout() {
     fetchConversionRate();
   }, []);
 
+  // Intercept checkout submission to finalize points deduction when "Pay now" is clicked
+  useBuyerJourneyIntercept(async ({ canBlockProgress }) => {
+    // Only intercept if Voyager points are applied
+    const pointsUsed = Number(
+      attributes?.find?.((a: any) => a?.key === "voyager_points_used")?.value || 0
+    );
+    const sessionId = attributes?.find?.((a: any) => a?.key === "voyager_session_id")?.value || "";
+    
+    if (pointsUsed > 0 && sessionId) {
+      console.log("[Voyager Checkout] Intercepting checkout submission to finalize points deduction", {
+        pointsUsed,
+        sessionId,
+      });
+      
+      try {
+        // Call API to finalize points deduction (issue certificate)
+        // Note: We use a temporary order ID here, the webhook will update it with the real order ID
+        const tempOrderId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const finalizeResponse = await fetch(`${API_URL}/finalize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            pointsUsed,
+            orderId: tempOrderId, // Temporary ID, webhook will update with real order ID
+          }),
+        });
+
+        if (!finalizeResponse.ok) {
+          const errorData = await finalizeResponse.json();
+          console.error("[Voyager Checkout] Points finalization failed:", errorData);
+          
+          if (canBlockProgress) {
+            return {
+              behavior: "block",
+              reason: "Points deduction failed",
+              errors: [
+                {
+                  message: errorData.message || "Failed to deduct Voyager miles. Please try again or contact support.",
+                },
+              ],
+            };
+          }
+        }
+
+        const finalizeData = await finalizeResponse.json();
+        console.log("[Voyager Checkout] Points finalized successfully:", finalizeData);
+        
+        // Allow checkout to proceed
+        return { behavior: "allow" };
+      } catch (error: any) {
+        console.error("[Voyager Checkout] Error during points finalization:", error);
+        
+        if (canBlockProgress) {
+          return {
+            behavior: "block",
+            reason: "Points deduction error",
+            errors: [
+              {
+                message: error.message || "An error occurred while processing your Voyager miles. Please try again.",
+              },
+            ],
+          };
+        }
+      }
+    }
+    
+    // If no Voyager points applied, allow checkout to proceed normally
+    return { behavior: "allow" };
+  });
+
   // Check for existing session from cart extension (via attributes)
   useEffect(() => {
     const sessionIdAttr = attributes?.find?.((a: any) => a?.key === "voyager_session_id");
     const sessionId = sessionIdAttr?.value || "";
+    const memberNumberAttr = attributes?.find?.((a: any) => a?.key === "voyager_member_number")?.value || "";
     const prefilledPointsUsed = Number(
       attributes?.find?.((a: any) => a?.key === "voyager_points_used")?.value || 0
     );
@@ -105,36 +178,107 @@ function VoyagerMilesCheckout() {
       attributes?.find?.((a: any) => a?.key === "voyager_remaining_points")?.value || 0
     );
 
-    // If user logged in from cart, show points display (even if no points used yet)
-    if (sessionId && totalPointsAttr > 0 && !approved) {
-      // Calculate remaining points (available miles after discount)
-      const remaining = remainingPointsAttr > 0 
-        ? remainingPointsAttr 
-        : Math.max(0, totalPointsAttr - prefilledPointsUsed);
-      
-      // Use remaining points as available balance (what user can still use)
-      const availableBalance = remaining;
-      const calculatedDiscount = prefilledPointsUsed * prefilledPointsRate;
-      
+    // If user logged in from cart (has sessionId), use existing session
+    // Even if totalPointsAttr is 0, we should still use the session and fetch fresh balance
+    if (sessionId && !approved) {
       console.log("[Voyager Checkout] Existing session from cart detected", {
         sessionId,
+        memberNumber: memberNumberAttr,
         totalPoints: totalPointsAttr,
         pointsUsed: prefilledPointsUsed,
-        remainingPoints: remaining,
-        availableBalance,
-        calculatedDiscount,
+        remainingPoints: remainingPointsAttr,
         prefilledPointsRate,
       });
       
-      setApproved(true);
-      // Set available balance (remaining points after discount)
-      setPointsBalance(availableBalance);
-      setPointsToApply(prefilledPointsUsed);
-      // Calculate ZAR value of remaining points
-      setBalanceZar(availableBalance * prefilledPointsRate);
-      setDiscountZar(calculatedDiscount);
+      // If we have cached points data, use it immediately
+      if (totalPointsAttr > 0) {
+        // Calculate remaining points (available miles after discount)
+        const remaining = remainingPointsAttr > 0 
+          ? remainingPointsAttr 
+          : Math.max(0, totalPointsAttr - prefilledPointsUsed);
+        
+        // Use remaining points as available balance (what user can still use)
+        const availableBalance = remaining;
+        const calculatedDiscount = prefilledPointsUsed * prefilledPointsRate;
+        
+        setApproved(true);
+        setPointsBalance(availableBalance);
+        setPointsToApply(prefilledPointsUsed);
+        setBalanceZar(availableBalance * prefilledPointsRate);
+        setDiscountZar(calculatedDiscount);
+      } else {
+        // Session exists but no cached points - fetch fresh balance
+        console.log("[Voyager Checkout] Session found but no cached points, fetching account summary...");
+        setApproved(true); // Mark as approved so we don't show login form
+        
+        // Fetch account summary using existing session
+        const fetchAccountSummary = async () => {
+          try {
+            setLoading(true);
+            const summaryResponse = await fetch(`${API_URL}/account-summary`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId }),
+            });
+
+            if (summaryResponse.ok) {
+              const summaryData = await summaryResponse.json();
+              if (summaryData.success) {
+                // Validate that the returned member number matches the expected one
+                const returnedMemberId = summaryData.memberId || "";
+                if (memberNumberAttr && returnedMemberId && memberNumberAttr !== returnedMemberId) {
+                  console.error("[Voyager Checkout] Member number mismatch!", {
+                    expected: memberNumberAttr,
+                    returned: returnedMemberId,
+                    sessionId,
+                  });
+                  setError(`Account mismatch detected. Expected member ${memberNumberAttr}, but got ${returnedMemberId}. Please log in again.`);
+                  setApproved(false);
+                  setLoading(false);
+                  return;
+                }
+                
+                const balance = summaryData.points || 0;
+                const effectiveRate = prefilledPointsRate || pointsRate;
+                
+                setPointsBalance(balance);
+                setBalanceZar(balance * effectiveRate);
+                
+                // Update attributes with fresh balance and ensure member number is set
+                await setAttribute("voyager_total_points", balance.toString());
+                await setAttribute("voyager_points_rate", effectiveRate.toString());
+                if (memberNumberAttr) {
+                  await setAttribute("voyager_member_number", memberNumberAttr);
+                }
+                if (returnedMemberId && !memberNumberAttr) {
+                  await setAttribute("voyager_member_number", returnedMemberId);
+                }
+                
+                console.log("[Voyager Checkout] Account summary fetched successfully", {
+                  balance,
+                  balanceZar: balance * effectiveRate,
+                  memberId: returnedMemberId || memberNumberAttr,
+                });
+              } else {
+                console.error("[Voyager Checkout] Account summary failed:", summaryData.message);
+                setError(summaryData.message || "Failed to fetch account summary");
+              }
+            } else {
+              console.error("[Voyager Checkout] Account summary request failed:", summaryResponse.status);
+              setError("Failed to fetch account summary");
+            }
+          } catch (error) {
+            console.error("[Voyager Checkout] Error fetching account summary:", error);
+            setError("Network error while fetching account summary");
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        fetchAccountSummary();
+      }
     }
-  }, [attributes, pointsRate, approved]);
+  }, [attributes, pointsRate, approved, API_URL]);
 
   // Check if cart attributes can be updated
   if (!instructions.attributes.canUpdateAttributes) {
@@ -184,6 +328,73 @@ function VoyagerMilesCheckout() {
     setLoading(true);
     
     try {
+      // Check if there's already a session from cart extension
+      const existingSessionId = attributes?.find?.((a: any) => a?.key === "voyager_session_id")?.value || "";
+      const existingMemberNumber = attributes?.find?.((a: any) => a?.key === "voyager_member_number")?.value || "";
+      
+      // If session exists and member number matches, reuse existing session
+      if (existingSessionId && existingMemberNumber === userId) {
+        console.log("[Voyager Checkout] Reusing existing session from cart", {
+          sessionId: existingSessionId,
+          memberNumber: existingMemberNumber,
+        });
+        
+        // Fetch account summary using existing session
+        const summaryResponse = await fetch(`${API_URL}/account-summary`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: existingSessionId }),
+        });
+
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          if (summaryData.success) {
+            // Validate that the returned member number matches the expected one
+            const returnedMemberId = summaryData.memberId || "";
+            if (returnedMemberId && existingMemberNumber && returnedMemberId !== existingMemberNumber) {
+              console.error("[Voyager Checkout] Member number mismatch when reusing session!", {
+                expected: existingMemberNumber,
+                returned: returnedMemberId,
+                sessionId: existingSessionId,
+              });
+              setError(`Account mismatch detected. Expected member ${existingMemberNumber}, but got ${returnedMemberId}. Please log in again.`);
+              setLoading(false);
+              return;
+            }
+            
+            const balance = summaryData.points || 0;
+            const effectiveRate = pointsRate;
+            
+            setApproved(true);
+            setPointsBalance(balance);
+            setBalanceZar(balance * effectiveRate);
+            
+            // Update attributes with fresh data
+            await setAttribute("voyager_session_id", existingSessionId);
+            await setAttribute("voyager_member_number", existingMemberNumber || returnedMemberId);
+            await setAttribute("voyager_total_points", balance.toString());
+            await setAttribute("voyager_points_rate", effectiveRate.toString());
+            
+            setMessage("Session restored successfully!");
+            setLoading(false);
+            return;
+          } else {
+            console.error("[Voyager Checkout] Account summary validation failed:", summaryData.message);
+            setError(summaryData.message || "Failed to validate session");
+            setLoading(false);
+            return;
+          }
+        } else {
+          console.error("[Voyager Checkout] Account summary request failed:", summaryResponse.status);
+          setError("Failed to validate existing session");
+          setLoading(false);
+          return;
+        }
+        
+        // If session validation failed, continue with new authentication
+        console.log("[Voyager Checkout] Existing session validation failed, creating new session");
+      }
+      
       // Store Voyager credentials in cart attributes
       console.log("[Voyager Checkout] Setting user credentials");
       await setAttribute("voyager_user_id", userId);
@@ -543,7 +754,6 @@ function VoyagerMilesCheckout() {
           {pointsToApply === 0 && (
             <BlockStack spacing="base">
               <BlockStack spacing="tight">
-                <Text size="small">Enter the Rand amount you would like to redeem</Text>
                 <BlockStack spacing="tight">
                   <TextField
                     label=""

@@ -769,6 +769,7 @@ class VoyagerService {
     return {
       success: true,
       points,
+      memberId: memberId || null, // Include memberId for validation
       message: 'Points balance retrieved successfully'
     };
   }
@@ -1809,7 +1810,7 @@ async function handleVoyagerAPI(request, path) {
 
     const result = await voyagerService.getAccountSummary(sessionId);
     
-    console.log(`[ACCOUNT-SUMMARY-ENDPOINT] Service result - success: ${result.success}, points: ${result.points || 'N/A'}, message: ${result.message || 'N/A'}`);
+    console.log(`[ACCOUNT-SUMMARY-ENDPOINT] Service result - success: ${result.success}, points: ${result.points || 'N/A'}, memberId: ${result.memberId || 'N/A'}, message: ${result.message || 'N/A'}`);
     
     // If SOAP fetch failed, try to return cached balance
     if (!result.success) {
@@ -1823,6 +1824,7 @@ async function handleVoyagerAPI(request, path) {
         return new Response(JSON.stringify({
           success: true,
           points: cachedBalance,
+          memberId: memberId || null, // Include memberId for validation
           message: 'Points balance retrieved from cache (SOAP unavailable)',
           fromCache: true
         }), {
@@ -1848,12 +1850,14 @@ async function handleVoyagerAPI(request, path) {
       });
     }
 
-    console.log(`[ACCOUNT-SUMMARY-ENDPOINT] Returning success with points: ${result.points}`);
+    console.log(`[ACCOUNT-SUMMARY-ENDPOINT] Returning success with points: ${result.points}, memberId: ${result.memberId || 'N/A'}`);
     console.log('[ACCOUNT-SUMMARY-ENDPOINT] ========== ACCOUNT SUMMARY COMPLETE ==========');
     
     return new Response(JSON.stringify({
       success: true,
       points: result.points,
+      memberId: result.memberId || null, // Include memberId for validation
+      pointTypes: result.pointTypes || null, // Include point types for FEFO
       message: result.message,
       fromCache: false
     }), {
