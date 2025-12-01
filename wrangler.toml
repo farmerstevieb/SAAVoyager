@@ -17,6 +17,11 @@ binding = "APP_SETTINGS"
 id = "3021b41b08544ea58860689eb1d056a9"
 preview_id = "3021b41b08544ea58860689eb1d056a9"
 
+[[env.production.kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "75cb3d5884914631b12e3bf733b67195"
+preview_id = "cc14ba96100a4582bb8932615c13c08a"
+
 [env.staging]
 name = "saa-voyager-app-staging"
 

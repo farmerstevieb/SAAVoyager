@@ -269,11 +269,20 @@ class VoyagerService {
     try {
       if (this.env?.SESSIONS_KV) {
         await this.env.SESSIONS_KV.put(sessionId, JSON.stringify(sessionData), { expirationTtl: 3600 }); // 1 hour TTL
-        log('[SESSION-KV] Stored session in KV:', { sessionId, hasMemberId: !!sessionData.memberId });
+        log('[SESSION-KV] Stored session in KV:', { 
+          sessionId, 
+          hasMemberId: !!sessionData.memberId,
+          hasSessionToken: !!sessionData.sessionToken,
+          hasTransactionId: !!sessionData.transactionId,
+          username: sessionData.username || 'none',
+          memberId: sessionData.memberId || 'none'
+        });
         return true;
+      } else {
+        log('[SESSION-KV] SESSIONS_KV not available in env - session will not persist across instances');
       }
     } catch (error) {
-      log('[SESSION-KV] Error storing session in KV:', error);
+      log('[SESSION-KV] Error storing session in KV:', { error: error.message, sessionId });
     }
     return false;
   }
@@ -284,12 +293,24 @@ class VoyagerService {
       if (this.env?.SESSIONS_KV) {
         const sessionData = await this.env.SESSIONS_KV.get(sessionId);
         if (sessionData) {
-          log('[SESSION-KV] Retrieved session from KV:', { sessionId, hasMemberId: !!JSON.parse(sessionData).memberId });
-          return JSON.parse(sessionData);
+          const parsed = JSON.parse(sessionData);
+          log('[SESSION-KV] Retrieved session from KV:', { 
+            sessionId, 
+            hasMemberId: !!parsed.memberId,
+            hasSessionToken: !!parsed.sessionToken,
+            hasTransactionId: !!parsed.transactionId,
+            username: parsed.username || 'none',
+            memberId: parsed.memberId || 'none'
+          });
+          return parsed;
+        } else {
+          log('[SESSION-KV] Session not found in KV:', { sessionId });
         }
+      } else {
+        log('[SESSION-KV] SESSIONS_KV not available in env');
       }
     } catch (error) {
-      log('[SESSION-KV] Error retrieving session from KV:', error);
+      log('[SESSION-KV] Error retrieving session from KV:', { error: error.message, sessionId });
     }
     return null;
   }
@@ -308,35 +329,54 @@ class VoyagerService {
     if (session) {
       // Restore to in-memory cache for faster access
       this.sessions.set(sessionId, session);
-      log('[SESSION] Restored session from KV to memory:', { sessionId, memberId: session.memberId });
+      log('[SESSION] Restored session from KV to memory:', { 
+        sessionId, 
+        memberId: session.memberId,
+        hasSessionToken: !!session.sessionToken,
+        hasTransactionId: !!session.transactionId
+      });
       return session;
+    } else {
+      log('[SESSION] Session not found in KV, will try reconstruction:', { sessionId });
     }
 
     // Fallback: Try to extract membership number from sessionId
     // SessionId format: session_<base64(username:password)>_<timestamp>
-    // Note: Only first 20 chars of base64 are used, so full decode may not work
-    // But we can try to decode and extract username if possible
+    // Note: The base64 may be truncated (first 20 chars) or full length
     try {
       const sessionIdParts = sessionId.split('_');
       if (sessionIdParts.length >= 2) {
-        const encodedData = sessionIdParts[1];
-        // Try to decode (base64) - may fail if truncated
+        let encodedData = sessionIdParts[1];
+        
+        // Try to decode (base64) - handle both truncated and full base64 strings
         try {
-          const decoded = atob(encodedData + '=='); // Add padding in case it was truncated
+          // Remove existing padding if present
+          encodedData = encodedData.replace(/=+$/, '');
+          
+          // Add padding to make it valid base64 (base64 length must be multiple of 4)
+          const paddingNeeded = (4 - (encodedData.length % 4)) % 4;
+          const paddedData = encodedData + '='.repeat(paddingNeeded);
+          
+          const decoded = atob(paddedData);
           const [username] = decoded.split(':');
           if (username && username.length > 0) {
-            log('[SESSION] Reconstructed session from sessionId:', { sessionId, username });
+            log('[SESSION] Reconstructed session from sessionId (WARNING: tokens missing):', { 
+              sessionId, 
+              username,
+              note: 'This means KV lookup failed - session may not persist across worker instances'
+            });
             // Return minimal session data - tokens will need to be re-fetched
             // But we can at least identify the member
             return {
               username,
               memberId: username, // Use username as memberId fallback
               sessionToken: null, // Will need to be fetched again via re-auth
-              transactionId: null
+              transactionId: null,
+              wasReconstructed: true // Flag to indicate this is a reconstructed session
             };
           }
         } catch (decodeError) {
-          // Base64 decode failed - sessionId might be truncated
+          // Base64 decode failed - sessionId might be truncated or invalid
           log('[SESSION] Could not decode sessionId (may be truncated):', decodeError.message);
         }
       }
@@ -581,7 +621,18 @@ class VoyagerService {
           this.sessions.set(sessionId, sessionData);
           
           // Also store in KV for persistence across Worker instances
-          await this.storeSessionInKV(sessionId, sessionData);
+          const kvStored = await this.storeSessionInKV(sessionId, sessionData);
+          if (!kvStored) {
+            console.log(`[AUTH] WARNING: Session not stored in KV - session will not persist across worker instances. sessionId: ${sessionId}`);
+          } else {
+            // Verify the session was actually stored in KV
+            const verifySession = await this.getSessionFromKV(sessionId);
+            if (!verifySession || !verifySession.sessionToken) {
+              console.log(`[AUTH] WARNING: Session stored in KV but verification failed - sessionId: ${sessionId}, hasSession: ${!!verifySession}, hasToken: ${!!verifySession?.sessionToken}`);
+            } else {
+              console.log(`[AUTH] Session verified in KV - sessionId: ${sessionId}, memberId: ${verifySession.memberId}`);
+            }
+          }
           
           let points;
           if (existingMemberBalance != null) {
@@ -744,10 +795,21 @@ class VoyagerService {
         } else {
           // Cannot provide a real balance
           console.log(`[ACCOUNT-SUMMARY] SOAP fetch failed and no cached balance - sessionId: ${sessionId}, memberId: ${memberId || 'none'}, error: ${summary.message || 'unknown'}`);
+          
+          // Provide more specific error message based on the failure reason
+          let errorMessage = 'Account summary unavailable';
+          if (summary.message?.includes('expired') || summary.message?.includes('Invalid session')) {
+            errorMessage = 'Session expired. Please log in again.';
+          } else if (summary.message?.includes('missing tokens')) {
+            errorMessage = 'Session tokens missing. Please log in again.';
+          } else if (summary.message) {
+            errorMessage = `Unable to fetch account summary: ${summary.message}`;
+          }
+          
           return {
             success: false,
             status: 502,
-            message: 'Account summary unavailable'
+            message: errorMessage
           };
         }
       }
@@ -1609,12 +1671,29 @@ class VoyagerService {
       const session = await this.getSession(sessionId);
       if (!session) {
         log('[SOAP-FETCH] Session not found:', { sessionId });
-        return { success: false, message: 'Invalid session' };
+        return { success: false, message: 'Invalid session. Please log in again.' };
       }
+      
+      // Log session details for debugging
+      log('[SOAP-FETCH] Session retrieved:', {
+        sessionId,
+        hasSessionToken: !!session.sessionToken,
+        hasTransactionId: !!session.transactionId,
+        memberId: session.memberId || 'none',
+        username: session.username || 'none'
+      });
       
       // If session was reconstructed and missing tokens, we need to re-authenticate
       if (!session.sessionToken && !session.transactionId) {
-        log('[SOAP-FETCH] Session missing tokens, cannot fetch account summary:', { sessionId, username: session.username });
+        const wasReconstructed = session.wasReconstructed || false;
+        log('[SOAP-FETCH] Session missing tokens, cannot fetch account summary:', { 
+          sessionId, 
+          username: session.username,
+          hasMemberId: !!session.memberId,
+          wasReconstructed: wasReconstructed,
+          sessionKeys: Object.keys(session),
+          note: wasReconstructed ? 'Session was reconstructed from sessionId (KV lookup failed) - user needs to log in again' : 'Session exists but tokens are missing'
+        });
         return { success: false, message: 'Session expired. Please log in again.' };
       }
       
@@ -1712,12 +1791,22 @@ class VoyagerService {
       const parsed = this.parseAccountSummaryResponse(text);
       log('[SOAP-FETCH] Parse result:', parsed);
       
+      if (!parsed.success) {
+        log('[SOAP-FETCH] Parse failed:', {
+          message: parsed.message,
+          sessionId,
+          memberId: session?.memberId || 'none'
+        });
+      }
+      
       return parsed;
     } catch (error) {
+      const session = await this.getSession(sessionId).catch(() => null);
       log('[SOAP-FETCH] Exception during SOAP fetch:', { 
         error: error.message, 
         stack: error.stack,
-        sessionId 
+        sessionId,
+        memberId: session?.memberId || 'none'
       });
       return { success: false, message: error.message || 'Account summary request failed' };
     }
@@ -1787,15 +1876,127 @@ async function handleVoyagerAPI(request, path) {
     }
   }
 
+  // Lookup session by member number (for checkout extension when attributes are empty)
+  if (path === '/api/voyager/lookup-session' && method === 'POST') {
+    const body = await request.json();
+    const { memberNumber } = body;
+    
+    log('[LOOKUP-SESSION] Request received', { memberNumber });
+    
+    if (!memberNumber) {
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Member number is required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    // Search for active session by member number
+    // Check in-memory sessions first
+    let foundSession = null;
+    let foundSessionId = null;
+    
+    for (const [sessionId, session] of voyagerService.sessions.entries()) {
+      if (session.memberId === memberNumber || session.username === memberNumber) {
+        foundSession = session;
+        foundSessionId = sessionId;
+        log('[LOOKUP-SESSION] Found session in memory', { sessionId, memberNumber });
+        break;
+      }
+    }
+    
+    // If not found in memory, try KV (this is slower, so we do it second)
+    if (!foundSession && voyagerService.env?.SESSIONS_KV) {
+      // Note: KV doesn't support querying by value, so we'd need to store a mapping
+      // For now, we'll return the in-memory result or suggest using sessionId directly
+      log('[LOOKUP-SESSION] Session not found in memory, KV lookup by member number not supported');
+    }
+    
+    if (foundSession && foundSessionId) {
+      return new Response(JSON.stringify({
+        success: true,
+        sessionId: foundSessionId,
+        memberId: foundSession.memberId,
+        username: foundSession.username,
+        hasSessionToken: !!foundSession.sessionToken
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    return new Response(JSON.stringify({
+      success: false,
+      message: 'No active session found for this member number'
+    }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+
   if (path === '/api/voyager/account-summary' && method === 'POST') {
     console.log('[ACCOUNT-SUMMARY-ENDPOINT] ========== ACCOUNT SUMMARY REQUEST ==========');
     const body = await request.json();
-    const { sessionId } = body;
+    const { sessionId, memberNumber } = body; // Also accept memberNumber as fallback
     
-    console.log(`[ACCOUNT-SUMMARY-ENDPOINT] Request received - sessionId: ${sessionId}`);
+    console.log(`[ACCOUNT-SUMMARY-ENDPOINT] Request received - sessionId: ${sessionId || 'none'}, memberNumber: ${memberNumber || 'none'}`);
+
+    // If no sessionId but we have memberNumber, try to lookup session
+    if (!sessionId && memberNumber) {
+      log('[ACCOUNT-SUMMARY-ENDPOINT] No sessionId provided, attempting lookup by member number', { memberNumber });
+      
+      // Search for active session by member number
+      let foundSessionId = null;
+      for (const [sid, session] of voyagerService.sessions.entries()) {
+        if (session.memberId === memberNumber || session.username === memberNumber) {
+          foundSessionId = sid;
+          log('[ACCOUNT-SUMMARY-ENDPOINT] Found session by member number', { sessionId: foundSessionId, memberNumber });
+          break;
+        }
+      }
+      
+      if (foundSessionId) {
+        // Use the found sessionId
+        const result = await voyagerService.getAccountSummary(foundSessionId);
+        // ... continue with normal response handling
+        if (!result.success) {
+          const session = await voyagerService.getSession(foundSessionId);
+          const memberId = session?.memberId;
+          const cachedBalance = voyagerService.sessionBalances.get(foundSessionId) || 
+                               (memberId ? voyagerService.memberBalances.get(memberId) : null);
+          
+          if (cachedBalance != null) {
+            return new Response(JSON.stringify({
+              success: true,
+              points: cachedBalance,
+              memberId: memberId || memberNumber,
+              message: 'Points balance retrieved from cache',
+              fromCache: true
+            }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+        }
+        
+        return new Response(JSON.stringify({
+          success: result.success,
+          points: result.points,
+          memberId: result.memberId || memberNumber,
+          pointTypes: result.pointTypes || null,
+          message: result.message,
+          fromCache: false
+        }), {
+          status: result.success ? 200 : (result.status || 502),
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
+    }
 
     if (!sessionId) {
-      console.log('[ACCOUNT-SUMMARY-ENDPOINT] Missing sessionId');
+      console.log('[ACCOUNT-SUMMARY-ENDPOINT] Missing sessionId and memberNumber lookup failed');
       return new Response(JSON.stringify({
         success: false,
         message: 'Session ID is required'

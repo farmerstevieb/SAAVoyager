@@ -195,9 +195,20 @@ class VoyagerMilesCart {
       const data = await response.json();
 
       if (data.success) {
-        // Store session data
+        // Store session data in localStorage
         localStorage.setItem("voyager_session_id", data.sessionId);
         localStorage.setItem("voyager_member_number", username);
+        
+        // Also store in cookie for checkout extension access (may not work due to cross-domain)
+        // Cookie expires in 1 hour (3600 seconds)
+        const cookieExpiry = new Date(Date.now() + 3600 * 1000).toUTCString();
+        document.cookie = `voyager_session_id=${data.sessionId}; expires=${cookieExpiry}; path=/; SameSite=Lax`;
+        document.cookie = `voyager_member_number=${username}; expires=${cookieExpiry}; path=/; SameSite=Lax`;
+        console.log("[Voyager] Session stored in cookie for checkout access");
+
+        // IMPORTANT: Store session in cart attributes immediately after login
+        // This ensures it's available when user proceeds to checkout
+        await this.storeSessionInCartAttributes(data.sessionId, username);
 
         this.showStatus("Login successful! Fetching points...", "success");
 
@@ -593,10 +604,56 @@ class VoyagerMilesCart {
     this.showCheckoutPrompt();
   }
 
+  // Store session in cart attributes (called after login)
+  async storeSessionInCartAttributes(sessionId, memberNumber) {
+    if (!sessionId || !memberNumber) {
+      console.log("[Voyager] Cannot store session in cart attributes - missing data", { sessionId: !!sessionId, memberNumber: !!memberNumber });
+      return;
+    }
+
+    try {
+      const response = await fetch("/cart/update.js", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          attributes: {
+            voyager_session_id: sessionId,
+            voyager_member_number: memberNumber,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[Voyager] Session stored in cart attributes successfully:", {
+          sessionId,
+          memberNumber,
+          cartAttributes: data.attributes,
+        });
+      } else {
+        console.error("[Voyager] Failed to store session in cart attributes:", response.status);
+      }
+    } catch (error) {
+      console.error("[Voyager] Error storing session in cart attributes:", error);
+    }
+  }
+
   addCartAttributes(pointsUsed, pointsRate) {
     // Store Voyager data in cart attributes for Shopify Function integration
     const sessionId = localStorage.getItem("voyager_session_id");
     const memberNumber = localStorage.getItem("voyager_member_number");
+    
+    // Also ensure cookies are set (in case they weren't set during login)
+    if (sessionId) {
+      const cookieExpiry = new Date(Date.now() + 3600 * 1000).toUTCString();
+      document.cookie = `voyager_session_id=${sessionId}; expires=${cookieExpiry}; path=/; SameSite=Lax`;
+      if (memberNumber) {
+        document.cookie = `voyager_member_number=${memberNumber}; expires=${cookieExpiry}; path=/; SameSite=Lax`;
+      }
+    }
 
     console.log("Adding cart attributes:", {
       pointsUsed,

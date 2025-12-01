@@ -160,11 +160,78 @@ function VoyagerMilesCheckout() {
     return { behavior: "allow" };
   });
 
-  // Check for existing session from cart extension (via attributes)
+  // Helper function to set cart attributes
+  const setAttribute = useCallback(async (key: string, value: string) => {
+    console.log("[Voyager Checkout] Setting cart attribute", { key, value });
+    try {
+      const result = await applyAttributeChange({
+        key,
+        type: "updateAttribute",
+        value,
+      });
+      console.log("[Voyager Checkout] Cart attribute set", { key, value, result });
+      return result;
+    } catch (error) {
+      console.error("[Voyager Checkout] Error setting attribute", { key, value, error });
+      throw error;
+    }
+  }, [applyAttributeChange]);
+
+  // Helper function to get cookie value
+  const getCookie = (name: string): string => {
+    if (typeof document === 'undefined') return '';
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      return parts.pop()?.split(';').shift() || '';
+    }
+    return '';
+  };
+
+  // Check for existing session from cart extension (via attributes or cookies)
   useEffect(() => {
+    console.log("[Voyager Checkout] Checking for existing session", {
+      attributesLength: attributes?.length || 0,
+      attributes: attributes,
+    });
+    
+    // Try to get sessionId from attributes first
     const sessionIdAttr = attributes?.find?.((a: any) => a?.key === "voyager_session_id");
-    const sessionId = sessionIdAttr?.value || "";
-    const memberNumberAttr = attributes?.find?.((a: any) => a?.key === "voyager_member_number")?.value || "";
+    let sessionId = sessionIdAttr?.value || "";
+    let memberNumberAttr = attributes?.find?.((a: any) => a?.key === "voyager_member_number")?.value || "";
+    
+    // If not in attributes, try to get from cookies (fallback)
+    if (!sessionId) {
+      sessionId = getCookie("voyager_session_id");
+      console.log("[Voyager Checkout] SessionId from cookie:", sessionId ? "found" : "not found");
+    }
+    
+    if (!memberNumberAttr) {
+      memberNumberAttr = getCookie("voyager_member_number");
+      console.log("[Voyager Checkout] Member number from cookie:", memberNumberAttr ? "found" : "not found");
+    }
+    
+    // If we found sessionId from cookie, set it as an attribute for future use
+    if (sessionId && !sessionIdAttr) {
+      console.log("[Voyager Checkout] Setting sessionId from cookie as attribute");
+      setAttribute("voyager_session_id", sessionId).catch(err => 
+        console.error("[Voyager Checkout] Error setting sessionId attribute:", err)
+      );
+    }
+    
+    if (memberNumberAttr && !attributes?.find?.((a: any) => a?.key === "voyager_member_number")) {
+      console.log("[Voyager Checkout] Setting member number from cookie as attribute");
+      setAttribute("voyager_member_number", memberNumberAttr).catch(err => 
+        console.error("[Voyager Checkout] Error setting member number attribute:", err)
+      );
+    }
+    
+    console.log("[Voyager Checkout] Extracted session data", {
+      sessionId,
+      memberNumber: memberNumberAttr,
+      hasSessionId: !!sessionId,
+      source: sessionIdAttr ? "attributes" : (sessionId ? "cookie" : "none"),
+    });
     const prefilledPointsUsed = Number(
       attributes?.find?.((a: any) => a?.key === "voyager_points_used")?.value || 0
     );
@@ -178,9 +245,83 @@ function VoyagerMilesCheckout() {
       attributes?.find?.((a: any) => a?.key === "voyager_remaining_points")?.value || 0
     );
 
-    // If user logged in from cart (has sessionId), use existing session
-    // Even if totalPointsAttr is 0, we should still use the session and fetch fresh balance
-    if (sessionId && !approved) {
+    // If no sessionId found, try to lookup by member number from Cloudflare KV
+    if (!sessionId && memberNumberAttr) {
+      console.log("[Voyager Checkout] No sessionId found, attempting lookup by member number from Cloudflare", { memberNumber: memberNumberAttr });
+      
+      const lookupAndSetSession = async () => {
+        try {
+          const lookupResponse = await fetch(`${API_URL}/lookup-session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ memberNumber: memberNumberAttr }),
+          });
+          
+          if (lookupResponse.ok) {
+            const lookupData = await lookupResponse.json();
+            if (lookupData.success && lookupData.sessionId) {
+              console.log("[Voyager Checkout] Found session by member number from Cloudflare", { sessionId: lookupData.sessionId });
+              // Set the sessionId as an attribute
+              await setAttribute("voyager_session_id", lookupData.sessionId);
+              // Use the found sessionId
+              const foundSessionId = lookupData.sessionId;
+              
+              // Fetch account summary with the found sessionId
+              setApproved(true);
+              setLoading(true);
+              
+              try {
+                const summaryResponse = await fetch(`${API_URL}/account-summary`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sessionId: foundSessionId }),
+                });
+                
+                if (summaryResponse.ok) {
+                  const summaryData = await summaryResponse.json();
+                  if (summaryData.success) {
+                    const balance = summaryData.points || 0;
+                    const effectiveRate = prefilledPointsRate || pointsRate;
+                    
+                    setPointsBalance(balance);
+                    setBalanceZar(balance * effectiveRate);
+                    
+                    await setAttribute("voyager_total_points", balance.toString());
+                    await setAttribute("voyager_points_rate", effectiveRate.toString());
+                    await setAttribute("voyager_member_number", memberNumberAttr);
+                    
+                    console.log("[Voyager Checkout] Account summary fetched successfully from Cloudflare", {
+                      balance,
+                      balanceZar: balance * effectiveRate,
+                      memberId: summaryData.memberId || memberNumberAttr,
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error("[Voyager Checkout] Error fetching account summary:", err);
+                setError("Failed to fetch account summary");
+              } finally {
+                setLoading(false);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("[Voyager Checkout] Error looking up session:", error);
+        }
+      };
+      
+      lookupAndSetSession();
+      return; // Exit early, will continue when session is found
+    }
+    
+    // If user logged in from cart (has sessionId from attributes or cookies), automatically approve and show points display
+    // This ensures users don't see the login form if they're already logged in
+    if (sessionId) {
+      // Immediately set approved to true to hide login form
+      if (!approved) {
+        setApproved(true);
+        console.log("[Voyager Checkout] Auto-approved from existing session", { sessionId, memberNumber: memberNumberAttr });
+      }
       console.log("[Voyager Checkout] Existing session from cart detected", {
         sessionId,
         memberNumber: memberNumberAttr,
@@ -209,7 +350,7 @@ function VoyagerMilesCheckout() {
       } else {
         // Session exists but no cached points - fetch fresh balance
         console.log("[Voyager Checkout] Session found but no cached points, fetching account summary...");
-        setApproved(true); // Mark as approved so we don't show login form
+        // approved is already set to true above
         
         // Fetch account summary using existing session
         const fetchAccountSummary = async () => {
@@ -261,11 +402,29 @@ function VoyagerMilesCheckout() {
                 });
               } else {
                 console.error("[Voyager Checkout] Account summary failed:", summaryData.message);
-                setError(summaryData.message || "Failed to fetch account summary");
+                // If session expired, show login form again
+                if (summaryData.message?.includes("expired") || summaryData.message?.includes("Invalid session")) {
+                  setApproved(false);
+                  setError("Session expired. Please log in again.");
+                } else {
+                  setError(summaryData.message || "Failed to fetch account summary");
+                }
               }
             } else {
-              console.error("[Voyager Checkout] Account summary request failed:", summaryResponse.status);
-              setError("Failed to fetch account summary");
+              const errorText = await summaryResponse.text().catch(() => "");
+              console.error("[Voyager Checkout] Account summary request failed:", {
+                status: summaryResponse.status,
+                statusText: summaryResponse.statusText,
+                errorText: errorText.substring(0, 200)
+              });
+              
+              // If 401/403, session is invalid - show login form
+              if (summaryResponse.status === 401 || summaryResponse.status === 403) {
+                setApproved(false);
+                setError("Session expired. Please log in again.");
+              } else {
+                setError(`Failed to fetch account summary (${summaryResponse.status})`);
+              }
             }
           } catch (error) {
             console.error("[Voyager Checkout] Error fetching account summary:", error);
@@ -307,18 +466,6 @@ function VoyagerMilesCheckout() {
     pointsToApply,
     allAttributes: attributes,
   });
-
-  // Helper function to set cart attributes
-  async function setAttribute(key, value) {
-    console.log("[Voyager Checkout] Setting cart attribute", { key, value });
-    const result = await applyAttributeChange({
-      key,
-      type: "updateAttribute",
-      value,
-    });
-    console.log("[Voyager Checkout] Cart attribute set", { key, value, result });
-    return result;
-  }
 
   // Handle Voyager authentication and points application
   const handleCheckAndApply = useCallback(async () => {
@@ -395,12 +542,9 @@ function VoyagerMilesCheckout() {
         console.log("[Voyager Checkout] Existing session validation failed, creating new session");
       }
       
-      // Store Voyager credentials in cart attributes
-      console.log("[Voyager Checkout] Setting user credentials");
-      await setAttribute("voyager_user_id", userId);
-      await setAttribute("voyager_pin_provided", pin ? "yes" : "no");
-
       // Step 1: Authenticate with Voyager
+      // Note: We do NOT store PIN/password in cart attributes for security
+      // Only sessionId and memberNumber are stored after successful authentication
       console.log("[Voyager Checkout] Step 1: Authenticating with Voyager API");
       const authResponse = await fetch(`${API_URL}/authenticate`, {
         method: "POST",
@@ -581,7 +725,7 @@ function VoyagerMilesCheckout() {
     try {
       // Clear all Voyager attributes
       console.log("[Voyager Checkout] Clearing all Voyager attributes");
-      await setAttribute("voyager_user_id", "");
+      // Clear session-related attributes (PIN was never stored)
       await setAttribute("voyager_session_id", "");
       await setAttribute("voyager_points_used", "0");
       await setAttribute("voyager_discount_amount", "0");
